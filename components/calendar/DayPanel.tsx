@@ -24,25 +24,26 @@ export default function DayPanel({ date, activities, loading, onClose }: DayPane
 
   return (
     <section
-      className="fm-card flex flex-col overflow-hidden h-full fm-animate-fadein"
+      className="fm-card flex flex-col overflow-hidden h-full max-h-[85vh] lg:max-h-[calc(100vh-10rem)] border border-border bg-card shadow-lg lg:shadow-sm fm-animate-scalein"
       aria-label={`Actividades del ${dateLabel}`}
     >
+      {/* Mobile drag handle for bottom sheet feel */}
+      <div className="pt-2 pb-1 flex justify-center lg:hidden">
+        <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30" />
+      </div>
+
       {/* Header */}
-      <div
-        className="flex items-center justify-between px-5 py-4 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--color-border)' }}
-      >
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border flex-shrink-0 bg-card">
+        <div className="flex items-center gap-2.5">
           <div
-            className="w-8 h-8 rounded-fm flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--fm-green-100)', color: 'var(--fm-green-700)' }}
+            className="w-9 h-9 rounded-fm flex items-center justify-center flex-shrink-0 bg-fm-green-100 text-fm-green-800 dark:bg-fm-green-950 dark:text-fm-green-300"
             aria-hidden="true"
           >
-            <Calendar size={16} />
+            <Calendar size={18} />
           </div>
           <div>
-            <h2 className="text-sm font-700 text-slate-900 leading-snug">{dateLabel}</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="text-sm font-bold text-foreground leading-snug">{dateLabel}</h2>
+            <p className="text-xs text-muted-foreground">
               {loading ? '…' : `${activities.length} actividad${activities.length !== 1 ? 'es' : ''}`}
             </p>
           </div>
@@ -50,16 +51,17 @@ export default function DayPanel({ date, activities, loading, onClose }: DayPane
         <Button
           id="btn-close-day-panel"
           variant="ghost"
-          size="icon-sm"
+          size="icon"
+          className="min-w-[44px] min-h-[44px] text-muted-foreground hover:text-foreground"
           onClick={onClose}
           aria-label="Cerrar panel del día"
         >
-          <X size={16} />
+          <X size={18} />
         </Button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
         {loading ? (
           <>
             <ActivityCardSkeleton />

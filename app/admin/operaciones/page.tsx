@@ -33,7 +33,7 @@ function OpTypeForm({
   return (
     <div className="space-y-4">
       {error && (
-        <div className="p-3 rounded-fm text-sm" style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>
+        <div className="p-3 rounded-fm text-sm bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900">
           {error}
         </div>
       )}
@@ -53,11 +53,11 @@ function OpTypeForm({
               key={c}
               type="button"
               onClick={() => onChange({ ...value, color: c })}
-              className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
+              className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 min-w-[32px] min-h-[32px]"
               style={{
                 background: c,
-                borderColor: value.color === c ? '#0f172a' : 'transparent',
-                boxShadow: value.color === c ? '0 0 0 2px white, 0 0 0 4px #0f172a' : 'none',
+                borderColor: value.color === c ? 'var(--foreground)' : 'transparent',
+                boxShadow: value.color === c ? '0 0 0 2px var(--card), 0 0 0 4px var(--primary)' : 'none',
               }}
               aria-label={c}
             />
@@ -67,35 +67,35 @@ function OpTypeForm({
               type="color"
               value={value.color}
               onChange={e => onChange({ ...value, color: e.target.value })}
-              className="w-8 h-8 rounded cursor-pointer border-0"
+              className="w-9 h-9 rounded cursor-pointer border-0 bg-transparent"
               title="Color personalizado"
             />
-            <span className="text-xs font-mono text-slate-500">{value.color}</span>
+            <span className="text-xs font-mono text-muted-foreground">{value.color}</span>
           </div>
         </div>
         {/* Preview */}
         <div
-          className="mt-3 px-4 py-2.5 rounded-fm inline-flex items-center gap-2 text-sm font-600"
+          className="mt-3 px-4 py-2.5 rounded-fm inline-flex items-center gap-2 text-sm font-semibold shadow-xs"
           style={{ background: value.color, color: getContrastText(value.color) }}
         >
-          <Tag size={14} />
-          {value.name || 'Vista previa'}
+          <Tag size={15} />
+          <span>{value.name || 'Vista previa'}</span>
         </div>
       </div>
       <div>
         <label className="fm-label">Ícono (nombre Lucide)</label>
         <input className="fm-input" value={value.icon} onChange={set('icon')} placeholder="spray-can" maxLength={50} />
-        <p className="text-xs text-slate-400 mt-1">Opcional. Referencia: lucide.dev</p>
+        <p className="text-xs text-muted-foreground mt-1">Opcional. Referencia: lucide.dev</p>
       </div>
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => onChange({ ...value, active: !value.active })}
-          className="flex items-center gap-2 text-sm font-500 transition-colors"
-          style={{ color: value.active ? 'var(--fm-green-700)' : 'var(--color-text-faint)' }}
+          className="flex items-center gap-2 text-sm font-semibold transition-colors min-h-[44px]"
+          style={{ color: value.active ? 'var(--fm-green-600)' : 'var(--muted-foreground)' }}
         >
-          {value.active ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
-          {value.active ? 'Activo' : 'Inactivo'}
+          {value.active ? <ToggleRight size={26} className="text-fm-green-600" /> : <ToggleLeft size={26} className="text-muted-foreground" />}
+          <span>{value.active ? 'Activo' : 'Inactivo'}</span>
         </button>
       </div>
     </div>
@@ -142,15 +142,22 @@ export default function OperacionesPage() {
 
   function openEdit(t: OperationType) {
     setEditing(t)
-    setForm({ name: t.name, description: t.description ?? '', color: t.color, icon: t.icon ?? '', active: t.active })
+    setForm({
+      name: t.name, description: t.description ?? '',
+      color: t.color, icon: t.icon ?? '', active: t.active,
+    })
     setFormErr(null)
     setModalOpen(true)
   }
 
   async function handleSave() {
     const result = operationTypeSchema.safeParse(form)
-    if (!result.success) { setFormErr(result.error.issues[0].message); return }
-    setSaving(true); setFormErr(null)
+    if (!result.success) {
+      setFormErr(result.error.issues[0].message)
+      return
+    }
+    setSaving(true)
+    setFormErr(null)
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
@@ -197,17 +204,17 @@ export default function OperacionesPage() {
     <div className="space-y-6 fm-animate-fadein">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-800 text-slate-900">Tipos de Operación</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Catálogo de operaciones con colores e íconos</p>
+          <h1 className="text-xl md:text-2xl font-800 text-foreground">Tipos de Operación</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Catálogo de operaciones con colores e íconos</p>
         </div>
-        <Button id="btn-add-operation" leftIcon={<Plus size={16} />} onClick={openCreate}>
+        <Button id="btn-add-operation" leftIcon={<Plus size={16} />} onClick={openCreate} className="min-h-[44px]">
           Nuevo tipo
         </Button>
       </div>
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24 rounded-fm-lg" />)}
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
         </div>
       ) : types.length === 0 ? (
         <EmptyState
@@ -218,47 +225,48 @@ export default function OperacionesPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {types.map(t => (
-            <div key={t.id} className="fm-card p-4 flex items-start gap-3 group">
+            <div key={t.id} className="fm-card p-4 rounded-xl border border-border bg-card flex items-start gap-3 group shadow-xs">
               <div
-                className="w-10 h-10 rounded-fm flex-shrink-0 flex items-center justify-center"
+                className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center shadow-2xs"
                 style={{ background: t.color }}
               >
-                <Tag size={16} color={getContrastText(t.color)} />
+                <Tag size={17} color={getContrastText(t.color)} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-sm font-700 text-slate-900 truncate">{t.name}</span>
+                  <span className="text-sm font-bold text-foreground truncate">{t.name}</span>
                   {!t.active && (
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#fef2f2', color: '#b91c1c' }}>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-red-100 dark:bg-red-950/70 text-red-800 dark:text-red-300">
                       Inactivo
                     </span>
                   )}
                 </div>
-                {t.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{t.description}</p>}
+                {t.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t.description}</p>}
                 <div className="flex items-center gap-1.5 mt-2">
                   <span className="w-3 h-3 rounded-full" style={{ background: t.color }} />
-                  <span className="text-xs font-mono text-slate-400">{t.color}</span>
+                  <span className="text-xs font-mono text-muted-foreground">{t.color}</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex flex-col gap-1 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                 <Button
                   id={`btn-edit-op-${t.id}`}
                   variant="ghost"
-                  size="icon-sm"
+                  size="icon"
+                  className="min-w-[36px] min-h-[36px] text-muted-foreground hover:text-foreground"
                   onClick={() => openEdit(t)}
                   aria-label="Editar"
                 >
-                  <Pencil size={14} />
+                  <Pencil size={15} />
                 </Button>
                 <Button
                   id={`btn-delete-op-${t.id}`}
                   variant="ghost"
-                  size="icon-sm"
+                  size="icon"
+                  className="min-w-[36px] min-h-[36px] text-destructive hover:bg-destructive/10"
                   onClick={() => setDeleteTarget(t)}
                   aria-label="Eliminar"
-                  style={{ color: '#dc2626' }}
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={15} />
                 </Button>
               </div>
             </div>
@@ -273,8 +281,12 @@ export default function OperacionesPage() {
         maxWidth="md"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={saving}>Cancelar</Button>
-            <Button onClick={handleSave} loading={saving}>{editing ? 'Guardar cambios' : 'Crear tipo'}</Button>
+            <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={saving} className="min-h-[44px]">
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} loading={saving} className="min-h-[44px]">
+              {editing ? 'Guardar cambios' : 'Crear tipo'}
+            </Button>
           </>
         }
       >

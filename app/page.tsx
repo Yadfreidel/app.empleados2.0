@@ -42,7 +42,6 @@ export default function CalendarPage() {
       setOperationTypes(ops ?? [])
     } catch (error) {
       console.error('Error cargando datos del calendario:', error)
-      // Si Supabase no está configurado, mostrar vacío (no datos demo en producción)
       setAllActivities([])
       setHotels([])
       setOperationTypes([])
@@ -68,16 +67,16 @@ export default function CalendarPage() {
     : []
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header />
 
-      <main className="flex-1 fm-container py-6">
+      <main className="flex-1 fm-container py-6 w-full max-w-7xl mx-auto px-4 md:px-6">
         {/* Título */}
         <div className="mb-5">
-          <h1 className="text-xl md:text-2xl font-800 text-slate-900 leading-tight">
+          <h1 className="text-xl md:text-2xl font-800 text-foreground leading-tight tracking-tight">
             Calendario Operativo
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Trabajos programados de F&amp;M Fumigación en todos los hoteles
           </p>
         </div>
@@ -92,7 +91,7 @@ export default function CalendarPage() {
           />
         </div>
 
-        {/* Layout principal: Calendario + Panel día */}
+        {/* Layout principal: Calendario + Panel día (bottom sheet en móvil, columna lateral en PC) */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 items-start">
           {/* Calendario */}
           <div className="space-y-4">
@@ -105,32 +104,36 @@ export default function CalendarPage() {
                 onDaySelect={date =>
                   setSelectedDate(prev => (prev && isSameDay(prev, date)) ? null : date)
                 }
-                loading={loading}
               />
             )}
             {/* Leyenda */}
             <Legend operationTypes={operationTypes} />
           </div>
 
-          {/* Panel de día */}
+          {/* Panel de día: bottom sheet en mobile (<lg) y sticky sidebar en PC (>=lg) */}
           {selectedDate && (
-            <div className="lg:sticky lg:top-20">
-              <DayPanel
-                date={selectedDate}
-                activities={dayActivities}
-                loading={loading}
-                onClose={() => setSelectedDate(null)}
+            <>
+              {/* Backdrop móvil */}
+              <div
+                className="fixed inset-0 bg-slate-950/65 backdrop-blur-xs z-40 lg:hidden fm-animate-fadein"
+                onClick={() => setSelectedDate(null)}
+                aria-hidden="true"
               />
-            </div>
+              <div className="fixed inset-x-0 bottom-0 z-50 p-2 sm:p-4 lg:p-0 lg:static lg:z-auto lg:sticky lg:top-20">
+                <DayPanel
+                  date={selectedDate}
+                  activities={dayActivities}
+                  loading={loading}
+                  onClose={() => setSelectedDate(null)}
+                />
+              </div>
+            </>
           )}
         </div>
       </main>
 
       {/* Footer */}
-      <footer
-        className="text-center py-5 text-xs"
-        style={{ color: 'var(--color-text-faint)', borderTop: '1px solid var(--color-border)' }}
-      >
+      <footer className="text-center py-5 text-xs text-muted-foreground border-t border-border mt-auto">
         &copy; {new Date().getFullYear()} F&amp;M Fumigación &mdash; Sistema de gestión operativa
       </footer>
     </div>

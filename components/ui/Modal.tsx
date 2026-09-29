@@ -45,23 +45,29 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'md',
       <div className="fm-backdrop" onClick={onClose} aria-hidden="true" />
       {/* Modal */}
       <div className="fm-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <div className={`fm-modal-content w-full ${maxWidths[maxWidth]}`}>
+        <div className={`fm-modal-content w-full ${maxWidths[maxWidth]} bg-card text-foreground border border-border shadow-xl rounded-xl`}>
           {/* Header */}
           {title && (
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
-              <h2 id="modal-title" className="text-lg font-700 text-slate-900">{title}</h2>
-              <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Cerrar">
+            <div className="flex items-center justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-border">
+              <h2 id="modal-title" className="text-lg font-bold text-foreground">{title}</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="min-w-[44px] min-h-[44px] text-muted-foreground hover:text-foreground"
+                onClick={onClose}
+                aria-label="Cerrar modal"
+              >
                 <X size={18} />
               </Button>
             </div>
           )}
           {/* Body */}
-          <div className="px-6 py-5">
+          <div className="px-5 sm:px-6 py-4 sm:py-5 max-h-[calc(85vh-8rem)] overflow-y-auto">
             {children}
           </div>
           {/* Footer */}
           {footer && (
-            <div className="px-6 pb-6 pt-2 border-t border-slate-100 flex justify-end gap-3">
+            <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-3 border-t border-border flex justify-end gap-3 flex-wrap">
               {footer}
             </div>
           )}
@@ -93,12 +99,16 @@ export function ConfirmModal({
       maxWidth="sm"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={loading}>Cancelar</Button>
-          <Button variant="danger" onClick={onConfirm} loading={loading}>{confirmLabel}</Button>
+          <Button variant="secondary" onClick={onClose} disabled={loading} className="min-h-[44px]">
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={onConfirm} loading={loading} className="min-h-[44px]">
+            {confirmLabel}
+          </Button>
         </>
       }
     >
-      <p className="text-slate-600 text-sm leading-relaxed">{message}</p>
+      <p className="text-muted-foreground text-sm leading-relaxed">{message}</p>
     </Modal>
   )
 }

@@ -18,16 +18,13 @@ export default function EmptyState({
   className,
 }: EmptyStateProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center py-16 px-4 text-center', className)}>
-      <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-        style={{ background: 'var(--fm-green-50)', color: 'var(--fm-green-600)' }}
-      >
+    <div className={cn('flex flex-col items-center justify-center py-12 sm:py-16 px-4 text-center', className)}>
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-fm-green-100 text-fm-green-800 dark:bg-fm-green-950 dark:text-fm-green-300">
         <Icon size={28} strokeWidth={1.5} />
       </div>
-      <h3 className="text-base font-600 text-slate-900 mb-1">{title}</h3>
+      <h3 className="text-base font-bold text-foreground mb-1">{title}</h3>
       {description && (
-        <p className="text-sm text-slate-500 max-w-xs leading-relaxed mb-4">{description}</p>
+        <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-4">{description}</p>
       )}
       {action}
     </div>

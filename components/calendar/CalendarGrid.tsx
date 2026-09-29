@@ -24,7 +24,6 @@ export default function CalendarGrid({
   activities,
   onDaySelect,
   selectedDate,
-  loading,
 }: CalendarGridProps) {
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
 
@@ -58,24 +57,22 @@ export default function CalendarGrid({
   }
 
   return (
-    <div className="fm-card overflow-hidden">
-      {/* ── Calendar Header ── */}
-      <div
-        className="flex items-center justify-between px-5 py-4"
-        style={{ borderBottom: '1px solid var(--color-border)' }}
-      >
-        <div className="flex items-center gap-2">
+    <div className="fm-card overflow-hidden w-full border border-border bg-card">
+      {/* ── Calendar Header (Compact on mobile) ── */}
+      <div className="flex items-center justify-between gap-1 sm:gap-2 px-3 sm:px-5 py-3 sm:py-4 border-b border-border bg-card">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button
             id="btn-prev-month"
             variant="ghost"
             size="icon"
             onClick={prevMonth}
             aria-label="Mes anterior"
+            className="min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px]"
           >
             <ChevronLeft size={18} />
           </Button>
           <h2
-            className="font-700 text-slate-900 min-w-[11rem] text-center text-base md:text-lg capitalize"
+            className="font-bold text-foreground text-sm sm:text-base md:text-lg min-w-[7.5rem] sm:min-w-[11rem] text-center capitalize select-none"
             aria-live="polite"
           >
             {capitalize(format(currentMonth, 'MMMM yyyy', { locale: es }))}
@@ -86,6 +83,7 @@ export default function CalendarGrid({
             size="icon"
             onClick={nextMonth}
             aria-label="Mes siguiente"
+            className="min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px]"
           >
             <ChevronRight size={18} />
           </Button>
@@ -96,21 +94,18 @@ export default function CalendarGrid({
           size="sm"
           leftIcon={<CalendarDays size={14} />}
           onClick={goToday}
+          className="min-h-[40px] sm:min-h-[44px] px-2.5 sm:px-3 text-xs sm:text-sm font-semibold"
         >
           Hoy
         </Button>
       </div>
 
       {/* ── Weekday labels ── */}
-      <div
-        className="grid grid-cols-7 text-center"
-        style={{ borderBottom: '1px solid var(--color-border)', padding: '0.5rem 0.75rem 0.25rem' }}
-      >
+      <div className="grid grid-cols-7 text-center border-b border-border py-2 px-1 sm:px-2 bg-muted/30">
         {WEEKDAYS.map(day => (
           <div
             key={day}
-            className="text-xs font-600 uppercase tracking-wide py-1"
-            style={{ color: 'var(--color-text-faint)' }}
+            className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground select-none"
             aria-label={day}
           >
             {day}
@@ -118,60 +113,118 @@ export default function CalendarGrid({
         ))}
       </div>
 
-      {/* ── Days grid ── */}
-      <div className="grid grid-cols-7 p-2 gap-0.5" aria-label="Calendario de actividades">
+      {/* ── Days grid (7 columns, never overflows) ── */}
+      <div className="grid grid-cols-7 p-1 sm:p-2 gap-1 sm:gap-1.5 w-full" aria-label="Calendario de actividades">
         {days.map(day => {
           const isCurrentMonth = isSameMonth(day, currentMonth)
           const dayIsToday     = isToday(day)
           const isSelected     = selectedDate ? isSameDay(day, selectedDate) : false
-          const dots           = getDotsForDay(day)
-          const hasActivities  = dots.length > 0
           const dateKey        = format(day, 'yyyy-MM-dd')
+          const acts           = activityMap.get(dateKey) || []
+          const dots           = getDotsForDay(day)
+          const hasActivities  = acts.length > 0
 
           return (
             <button
               key={dateKey}
               id={`calendar-day-${dateKey}`}
               onClick={() => onDaySelect(day)}
-              aria-label={`${format(day, 'EEEE d MMMM', { locale: es })}${hasActivities ? `, ${activityMap.get(dateKey)?.length} actividad(es)` : ''}`}
+              aria-label={`${format(day, 'EEEE d MMMM', { locale: es })}${hasActivities ? `, ${acts.length} actividad(es)` : ''}`}
               aria-pressed={isSelected}
               className={cn(
-                'relative flex flex-col items-center justify-start rounded-fm transition-all duration-150',
-                'min-h-[3.25rem] md:min-h-[4rem] pt-1.5 pb-1.5 px-0.5 cursor-pointer border',
+                'relative flex flex-col items-center md:items-start justify-start p-1 sm:p-1.5 rounded-lg transition-all duration-150 border w-full min-w-0 select-none cursor-pointer',
+                // Mobile: square aspect ratio. Desktop: taller cells for short activity tags
+                'aspect-square md:aspect-auto md:min-h-[5.5rem] lg:min-h-[6.25rem]',
                 isSelected
-                  ? 'border-fm-green-500 bg-fm-green-800 shadow-fm'
-                  : hasActivities && isCurrentMonth
-                    ? 'border-slate-200 bg-white hover:border-fm-green-300 hover:bg-fm-green-50'
-                    : 'border-transparent bg-transparent hover:bg-slate-50',
-                !isCurrentMonth && 'opacity-35',
+                  ? 'border-fm-green-600 bg-fm-green-700 text-white shadow-md ring-2 ring-fm-green-500/60 dark:bg-fm-green-800'
+                  : dayIsToday
+                    ? 'border-fm-green-500 bg-fm-green-50/60 text-foreground ring-1 ring-fm-green-500 dark:bg-fm-green-950/40 dark:text-fm-green-300'
+                    : hasActivities && isCurrentMonth
+                      ? 'border-border bg-card hover:border-fm-green-400 hover:bg-muted/60 text-foreground'
+                      : 'border-transparent bg-transparent hover:bg-muted/40 text-foreground',
+                !isCurrentMonth && 'opacity-30'
               )}
             >
-              {/* Day number */}
-              <span
-                className={cn(
-                  'w-7 h-7 flex items-center justify-center rounded-full text-sm font-600 leading-none transition-colors',
-                  isSelected
-                    ? 'text-white'
-                    : dayIsToday
-                      ? 'bg-fm-green-100 text-fm-green-800 font-700'
-                      : isCurrentMonth
-                        ? 'text-slate-800'
-                        : 'text-slate-400'
+              {/* Day number header */}
+              <div className="flex items-center justify-between w-full">
+                <span
+                  className={cn(
+                    'w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold leading-none transition-colors mx-auto md:mx-0',
+                    isSelected
+                      ? 'text-white'
+                      : dayIsToday
+                        ? 'bg-fm-green-600 text-white font-bold'
+                        : isCurrentMonth
+                          ? 'text-foreground'
+                          : 'text-muted-foreground'
+                  )}
+                >
+                  {format(day, 'd')}
+                </span>
+                {/* On PC, show total count if multiple */}
+                {hasActivities && !isSelected && (
+                  <span className="hidden md:inline-block text-[10px] font-semibold text-muted-foreground px-1">
+                    {acts.length}
+                  </span>
                 )}
-              >
-                {format(day, 'd')}
-              </span>
+              </div>
 
-              {/* Activity dots */}
+              {/* Mobile: Activity dots (max 3 dots + "+N") */}
               {hasActivities && (
-                <div className="flex items-center gap-0.5 mt-1" aria-hidden="true">
-                  {dots.map(dot => (
+                <div className="flex md:hidden items-center justify-center gap-0.5 mt-1 flex-wrap max-w-full px-0.5" aria-hidden="true">
+                  {dots.slice(0, 3).map(dot => (
                     <span
                       key={dot.id}
-                      className="fm-day-dot"
-                      style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.8)' : dot.color }}
+                      className="fm-day-dot w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.9)' : dot.color }}
                     />
                   ))}
+                  {acts.length > 3 && (
+                    <span
+                      className={cn(
+                        'text-[9px] font-bold leading-none ml-0.5',
+                        isSelected ? 'text-white' : 'text-muted-foreground'
+                      )}
+                    >
+                      +{acts.length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* PC: short activity labels */}
+              {hasActivities && (
+                <div className="hidden md:flex flex-col gap-1 w-full mt-1.5 px-0.5" aria-hidden="true">
+                  {acts.slice(0, 2).map(act => {
+                    const color = act.color_override || act.operation_type?.color || '#16a34a'
+                    return (
+                      <div
+                        key={act.id}
+                        className={cn(
+                          'w-full truncate text-[11px] font-medium px-1.5 py-0.5 rounded leading-tight text-left',
+                          isSelected
+                            ? 'bg-white/20 text-white'
+                            : 'bg-muted/80 text-foreground dark:bg-muted/40'
+                        )}
+                        style={!isSelected ? { borderLeft: `2.5px solid ${color}` } : undefined}
+                        title={`${act.title}${act.hotel ? ` · ${act.hotel.name}` : ''}`}
+                      >
+                        <span className="truncate block">
+                          {act.hotel?.name ? `${act.hotel.name}: ` : ''}{act.title}
+                        </span>
+                      </div>
+                    )
+                  })}
+                  {acts.length > 2 && (
+                    <span
+                      className={cn(
+                        'text-[10px] font-semibold pl-1 text-left',
+                        isSelected ? 'text-white/90' : 'text-muted-foreground'
+                      )}
+                    >
+                      +{acts.length - 2} más
+                    </span>
+                  )}
                 </div>
               )}
             </button>

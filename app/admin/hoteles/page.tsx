@@ -2,14 +2,11 @@
 // app/(admin)/hoteles/page.tsx
 import { useState, useEffect, useCallback } from 'react'
 import { Building2, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search } from 'lucide-react'
-import type { Metadata } from 'next'
 import type { Hotel, HotelFormData } from '@/types'
-import type { LucideIcon } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Modal, { ConfirmModal } from '@/components/ui/Modal'
 import { Skeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
-import type { ReactNode } from 'react'
 import { hotelSchema } from '@/lib/validations'
 import { formatSupabaseError } from '@/lib/utils'
 
@@ -32,7 +29,7 @@ function HotelForm({
   return (
     <div className="space-y-4">
       {error && (
-        <div className="p-3 rounded-fm text-sm" style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>
+        <div className="p-3 rounded-fm text-sm bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900">
           {error}
         </div>
       )}
@@ -40,7 +37,8 @@ function HotelForm({
         <label className="fm-label">Nombre <span className="text-red-500">*</span></label>
         <input className="fm-input" value={value.name} onChange={set('name')} placeholder="Hotel Paraíso" maxLength={100} required />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      {/* 1 col en mobile, 2 cols en PC */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label className="fm-label">Código</label>
           <input className="fm-input" value={value.code} onChange={set('code')} placeholder="HTL-01" maxLength={20} />
@@ -58,11 +56,11 @@ function HotelForm({
         <button
           type="button"
           onClick={() => onChange({ ...value, active: !value.active })}
-          className="flex items-center gap-2 text-sm font-500 transition-colors"
-          style={{ color: value.active ? 'var(--fm-green-700)' : 'var(--color-text-faint)' }}
+          className="flex items-center gap-2 text-sm font-semibold transition-colors min-h-[44px]"
+          style={{ color: value.active ? 'var(--fm-green-600)' : 'var(--muted-foreground)' }}
         >
-          {value.active ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
-          {value.active ? 'Activo' : 'Inactivo'}
+          {value.active ? <ToggleRight size={26} className="text-fm-green-600" /> : <ToggleLeft size={26} className="text-muted-foreground" />}
+          <span>{value.active ? 'Activo' : 'Inactivo'}</span>
         </button>
       </div>
     </div>
@@ -179,29 +177,29 @@ export default function HotelesPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-800 text-slate-900">Hoteles</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Gestiona los hoteles de F&amp;M Fumigación</p>
+          <h1 className="text-xl md:text-2xl font-800 text-foreground">Hoteles</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Gestiona los hoteles de F&amp;M Fumigación</p>
         </div>
-        <Button id="btn-add-hotel" leftIcon={<Plus size={16} />} onClick={openCreate}>
+        <Button id="btn-add-hotel" leftIcon={<Plus size={16} />} onClick={openCreate} className="min-h-[44px]">
           Nuevo hotel
         </Button>
       </div>
 
       {/* Search */}
       <div className="relative max-w-sm">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input
-          className="fm-input pl-9"
+          className="fm-input pl-10"
           placeholder="Buscar hotel..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
       </div>
 
-      {/* List */}
+      {/* Content */}
       {loading ? (
         <div className="space-y-3">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 rounded-fm-lg" />)}
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
@@ -210,58 +208,145 @@ export default function HotelesPage() {
           description={search ? 'Intenta con otra búsqueda.' : 'Crea el primer hotel usando el botón superior.'}
         />
       ) : (
-        <div className="space-y-2">
-          {filtered.map(h => (
-            <div
-              key={h.id}
-              className="fm-card flex items-center gap-4 px-5 py-4"
-            >
+        <>
+          {/* Mobile view: Cards */}
+          <div className="block md:hidden space-y-3">
+            {filtered.map(h => (
               <div
-                className="w-10 h-10 rounded-fm flex items-center justify-center flex-shrink-0"
-                style={{ background: h.active ? 'var(--fm-green-50)' : 'var(--color-surface-raised)', color: h.active ? 'var(--fm-green-700)' : 'var(--color-text-faint)' }}
+                key={h.id}
+                className="fm-card p-4 rounded-xl border border-border bg-card flex flex-col gap-3 shadow-xs"
               >
-                <Building2 size={18} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-700 text-slate-900 truncate">{h.name}</span>
-                  {h.code && (
-                    <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--color-surface-raised)', color: 'var(--color-text-faint)' }}>
-                      {h.code}
-                    </span>
-                  )}
-                  {!h.active && (
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#fef2f2', color: '#b91c1c' }}>
-                      Inactivo
-                    </span>
-                  )}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-fm-green-100 text-fm-green-800 dark:bg-fm-green-950 dark:text-fm-green-300"
+                    >
+                      <Building2 size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground leading-snug">{h.name}</h3>
+                      {h.code && (
+                        <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          {h.code}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span
+                    className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
+                      h.active
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-300'
+                    }`}
+                  >
+                    {h.active ? 'Activo' : 'Inactivo'}
+                  </span>
                 </div>
-                {h.location && <p className="text-xs text-slate-500 mt-0.5 truncate">{h.location}</p>}
+                {h.location && (
+                  <p className="text-xs text-muted-foreground truncate">{h.location}</p>
+                )}
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                  <Button
+                    id={`btn-edit-hotel-mobile-${h.id}`}
+                    variant="outline"
+                    size="sm"
+                    className="min-h-[40px] px-3"
+                    onClick={() => openEdit(h)}
+                    leftIcon={<Pencil size={14} />}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    id={`btn-delete-hotel-mobile-${h.id}`}
+                    variant="ghost"
+                    size="sm"
+                    className="min-h-[40px] px-3 text-destructive hover:bg-destructive/10"
+                    onClick={() => setDeleteTarget(h)}
+                    leftIcon={<Trash2 size={14} />}
+                  >
+                    Eliminar
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Button
-                  id={`btn-edit-hotel-${h.id}`}
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => openEdit(h)}
-                  aria-label="Editar"
-                >
-                  <Pencil size={15} />
-                </Button>
-                <Button
-                  id={`btn-delete-hotel-${h.id}`}
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setDeleteTarget(h)}
-                  aria-label="Eliminar"
-                  style={{ color: '#dc2626' }}
-                >
-                  <Trash2 size={15} />
-                </Button>
-              </div>
+            ))}
+          </div>
+
+          {/* Desktop view: Table */}
+          <div className="hidden md:block fm-card overflow-hidden border border-border bg-card rounded-xl shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-muted/50 border-b border-border text-xs uppercase font-bold text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="px-5 py-3.5">Hotel</th>
+                    <th scope="col" className="px-5 py-3.5">Código</th>
+                    <th scope="col" className="px-5 py-3.5">Ubicación</th>
+                    <th scope="col" className="px-5 py-3.5">Estado</th>
+                    <th scope="col" className="px-5 py-3.5 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filtered.map(h => (
+                    <tr key={h.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-fm-green-100 text-fm-green-800 dark:bg-fm-green-950 dark:text-fm-green-300">
+                            <Building2 size={16} />
+                          </div>
+                          <span className="font-bold text-foreground truncate">{h.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        {h.code ? (
+                          <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                            {h.code}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="px-5 py-4 text-muted-foreground truncate max-w-xs">
+                        {h.location || '—'}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                            h.active
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300'
+                              : 'bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-300'
+                          }`}
+                        >
+                          {h.active ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            id={`btn-edit-hotel-${h.id}`}
+                            variant="ghost"
+                            size="icon"
+                            className="min-w-[40px] min-h-[40px] text-muted-foreground hover:text-foreground"
+                            onClick={() => openEdit(h)}
+                            aria-label="Editar"
+                          >
+                            <Pencil size={15} />
+                          </Button>
+                          <Button
+                            id={`btn-delete-hotel-${h.id}`}
+                            variant="ghost"
+                            size="icon"
+                            className="min-w-[40px] min-h-[40px] text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteTarget(h)}
+                            aria-label="Eliminar"
+                          >
+                            <Trash2 size={15} />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+          </div>
+        </>
       )}
 
       {/* Create / Edit Modal */}
@@ -272,8 +357,12 @@ export default function HotelesPage() {
         maxWidth="md"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={saving}>Cancelar</Button>
-            <Button onClick={handleSave} loading={saving}>{editing ? 'Guardar cambios' : 'Crear hotel'}</Button>
+            <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={saving} className="min-h-[44px]">
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} loading={saving} className="min-h-[44px]">
+              {editing ? 'Guardar cambios' : 'Crear hotel'}
+            </Button>
           </>
         }
       >

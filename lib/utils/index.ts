@@ -1,7 +1,7 @@
 // lib/utils/index.ts
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { format, isToday, isSameMonth, parseISO } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { ActivityStatus, ActivityPriority } from '@/types'
 
@@ -35,32 +35,32 @@ export function capitalize(str: string): string {
 
 // ─── Status helpers ───────────────────────────────────────────────
 export const STATUS_LABELS: Record<ActivityStatus, string> = {
-  programado:   'Programado',
-  en_progreso:  'En progreso',
-  completado:   'Completado',
-  cancelado:    'Cancelado',
-  postpuesto:   'Postpuesto',
+  programado: 'Programado',
+  en_progreso: 'En progreso',
+  completado: 'Completado',
+  cancelado: 'Cancelado',
+  postpuesto: 'Postpuesto',
 }
 
 export const STATUS_COLORS: Record<ActivityStatus, { bg: string; text: string; border: string }> = {
-  programado:  { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+  programado: { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
   en_progreso: { bg: '#fefce8', text: '#a16207', border: '#fde68a' },
-  completado:  { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
-  cancelado:   { bg: '#fef2f2', text: '#b91c1c', border: '#fecaca' },
-  postpuesto:  { bg: '#faf5ff', text: '#7c3aed', border: '#e9d5ff' },
+  completado: { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
+  cancelado: { bg: '#fef2f2', text: '#b91c1c', border: '#fecaca' },
+  postpuesto: { bg: '#faf5ff', text: '#7c3aed', border: '#e9d5ff' },
 }
 
 export const PRIORITY_LABELS: Record<ActivityPriority, string> = {
-  baja:    'Baja',
-  normal:  'Normal',
-  alta:    'Alta',
+  baja: 'Baja',
+  normal: 'Normal',
+  alta: 'Alta',
   urgente: 'Urgente',
 }
 
 export const PRIORITY_COLORS: Record<ActivityPriority, { bg: string; text: string }> = {
-  baja:    { bg: '#f1f5f9', text: '#64748b' },
-  normal:  { bg: '#f0fdf4', text: '#16a34a' },
-  alta:    { bg: '#fff7ed', text: '#ea580c' },
+  baja: { bg: '#f1f5f9', text: '#64748b' },
+  normal: { bg: '#f0fdf4', text: '#16a34a' },
+  alta: { bg: '#fff7ed', text: '#ea580c' },
   urgente: { bg: '#fef2f2', text: '#dc2626' },
 }
 
@@ -69,10 +69,10 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } | nul
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16),
+    }
     : null
 }
 
