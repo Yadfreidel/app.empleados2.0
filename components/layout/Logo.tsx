@@ -16,6 +16,8 @@ const sizes = {
   xl: { icon: 84, fontSize: '1.75rem', gap: '1rem' },
 }
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+
 export default function Logo({ size = 'md', showText = true, className, textColor }: LogoProps) {
   const s = sizes[size] || sizes.md
 
@@ -31,7 +33,7 @@ export default function Logo({ size = 'md', showText = true, className, textColo
         }}
       >
         <Image
-          src="/images/logo.png"
+          src={`${basePath}/images/logo.png`}
           alt="F&M Fumigación Logo"
           width={s.icon * 2}
           height={s.icon * 2}

@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+
 export const metadata: Metadata = {
   title: {
     default: 'F&M Fumigación — Calendario Operativo',
@@ -12,9 +14,9 @@ export const metadata: Metadata = {
   keywords: ['fumigación', 'calendario operativo', 'control de plagas', 'hoteles'],
   robots: 'noindex,nofollow', // app interna
   icons: {
-    icon: '/images/logo.png',
-    shortcut: '/images/logo.png',
-    apple: '/images/logo.png',
+    icon: `${basePath}/images/logo.png`,
+    shortcut: `${basePath}/images/logo.png`,
+    apple: `${basePath}/images/logo.png`,
   },
 }
 

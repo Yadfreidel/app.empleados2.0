@@ -57,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userEmail, setUserEmail]     = useState<string | null>(null)
-  const [roleStatus, setRoleStatus]   = useState<'loading' | 'admin' | 'not_admin' | 'no_profile' | 'demo'>('loading')
+  const [roleStatus, setRoleStatus]   = useState<'loading' | 'admin' | 'not_admin' | 'no_profile' | 'unauthenticated' | 'error'>('loading')
 
   // Get current user email and profile
   useEffect(() => {
@@ -83,16 +83,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }
         } else {
           setUserEmail(null)
-          setRoleStatus('demo')
+          setRoleStatus('unauthenticated')
         }
       } catch {
-        // Supabase not configured yet
-        setUserEmail('admin@demo.local')
-        setRoleStatus('demo')
+        setUserEmail(null)
+        setRoleStatus('error')
       }
     }
     getUser()
   }, [])
+
+  useEffect(() => {
+    if (roleStatus === 'unauthenticated') router.replace('/login')
+  }, [roleStatus, router])
 
   async function handleLogout() {
     try {
@@ -101,6 +104,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       await supabase.auth.signOut()
     } catch { /* ignore */ }
     router.push('/login')
+  }
+
+  if (roleStatus !== 'admin') {
+    const statusMessage = roleStatus === 'loading' || roleStatus === 'unauthenticated'
+      ? 'Verificando acceso…'
+      : roleStatus === 'error'
+      ? 'No se pudo verificar tu sesión. Revisa la conexión e inténtalo de nuevo.'
+      : 'Esta sección requiere una cuenta de administrador activa.'
+
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background px-6 text-center text-foreground">
+        <p role="status" aria-live="polite">{statusMessage}</p>
+        {roleStatus !== 'loading' && roleStatus !== 'unauthenticated' && (
+          <Link href="/" className="text-sm text-primary underline underline-offset-4">
+            Volver al calendario
+          </Link>
+        )}
+      </main>
+    )
   }
 
   return (
@@ -214,21 +236,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <ThemeToggle />
         </header>
-
-        {/* Warning banner if database permissions are not admin */}
-        {(roleStatus === 'no_profile' || roleStatus === 'not_admin') && (
-          <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 px-4 py-3 text-amber-900 dark:text-amber-200 text-sm">
-            <div className="fm-container flex items-start gap-3">
-              <span className="text-lg leading-none">⚠️</span>
-              <div>
-                <p className="font-semibold">Permisos de Administrador requeridos en la Base de Datos</p>
-                <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
-                  Tu usuario (<span className="font-mono">{userEmail}</span>) está autenticado, pero {roleStatus === 'no_profile' ? 'no tiene registro en la tabla profiles' : 'tiene rol "consulta" en lugar de "admin"'}. Esto bloquea el guardado por las políticas de seguridad (RLS). Para solucionarlo, ejecuta el script <code className="bg-amber-100 dark:bg-amber-900/60 font-mono px-1 rounded text-amber-900 dark:text-amber-200">supabase/fix_database.sql</code> en el SQL Editor de tu Supabase Dashboard.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Page content */}
         <main className="flex-1 fm-container py-6 md:py-8 w-full max-w-7xl mx-auto px-4 md:px-6">
