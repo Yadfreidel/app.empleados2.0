@@ -238,7 +238,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Button>
             <Logo size="sm" />
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <NotificacionesCampana isAdmin={roleStatus === 'admin'} />
+            <ThemeToggle />
+          </div>
         </header>
 
         {/* Page content */}

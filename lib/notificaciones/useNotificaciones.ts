@@ -1,6 +1,6 @@
-'use client'
+﻿'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export type Notificacion = {
@@ -8,6 +8,7 @@ export type Notificacion = {
   tipo: 'confirmacion'
   empleado_id: string | null
   empleado_nombre: string | null
+  actividad_id: string | null
   servicio_id: string | null
   hotel_id: string | null
   hotel_nombre: string | null
@@ -20,80 +21,88 @@ export type Notificacion = {
   created_at: string
 }
 
-export function useNotificaciones(isAdmin: boolean) {
+export function useNotificaciones(isAdmin: boolean, soloNoLeidas = false) {
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
+  const [noLeidas, setNoLeidas] = useState(0)
   const [loading, setLoading] = useState(true)
-  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
-
-  const noLeidas = notificaciones.filter(n => !n.leida).length
+  const [error, setError] = useState<string | null>(null)
+  const [guardando, setGuardando] = useState(false)
+  const busy = useRef(false)
+  const request = useRef<AbortController | null>(null)
 
   const cargar = useCallback(async () => {
-    if (!isAdmin) { setLoading(false); return }
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('notificaciones')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50)
-    setNotificaciones((data as Notificacion[]) ?? [])
-    setLoading(false)
-  }, [isAdmin])
+    if (!isAdmin) return
+    request.current?.abort()
+    const controller = new AbortController()
+    request.current = controller
+    try {
+      const supabase = createClient()
+      let listaQuery = supabase.from('notificaciones').select('*').order('created_at', { ascending: false }).limit(50)
+      if (soloNoLeidas) listaQuery = listaQuery.eq('leida', false)
+      const [lista, contador] = await Promise.all([
+        listaQuery.abortSignal(controller.signal),
+        supabase.from('notificaciones').select('id', { count: 'exact', head: true }).eq('leida', false).abortSignal(controller.signal),
+      ])
+      if (controller.signal.aborted) return
+      if (lista.error || contador.error) {
+        setError('No se pudieron cargar las notificaciones. Intenta actualizar de nuevo.')
+        return
+      }
+      setNotificaciones((lista.data as Notificacion[]) ?? [])
+      setNoLeidas(contador.count ?? 0)
+      setError(null)
+    } catch {
+      if (!controller.signal.aborted) setError('No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.')
+    } finally {
+      if (!controller.signal.aborted) setLoading(false)
+    }
+  }, [isAdmin, soloNoLeidas])
 
-  useEffect(() => {
-    cargar()
-  }, [cargar])
-
-  // Realtime subscription
   useEffect(() => {
     if (!isAdmin) return
-
     const supabase = createClient()
-    const channel = supabase
-      .channel('notificaciones-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notificaciones' },
-        (payload) => {
-          const nueva = payload.new as Notificacion
-          setNotificaciones(prev => [nueva, ...prev])
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'notificaciones' },
-        (payload) => {
-          const actualizada = payload.new as Notificacion
-          setNotificaciones(prev =>
-            prev.map(n => n.id === actualizada.id ? actualizada : n)
-          )
-        }
-      )
-      .subscribe()
-
-    channelRef.current = channel
+    const channel = supabase.channel(`notificaciones-${crypto.randomUUID()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notificaciones' }, () => { void cargar() })
+      .subscribe(status => { if (status === 'SUBSCRIBED') void cargar() })
+    // Respaldo para conexiones sin Realtime: actualizar al volver y cada 15 segundos.
+    const refrescar = () => { if (document.visibilityState === 'visible') void cargar() }
+    const initial = window.setTimeout(refrescar, 0)
+    const interval = window.setInterval(refrescar, 15000)
+    window.addEventListener('focus', refrescar)
+    document.addEventListener('visibilitychange', refrescar)
     return () => {
+      request.current?.abort()
+      window.clearTimeout(initial)
+      window.clearInterval(interval)
+      window.removeEventListener('focus', refrescar)
+      document.removeEventListener('visibilitychange', refrescar)
       void supabase.removeChannel(channel)
     }
-  }, [isAdmin])
+  }, [isAdmin, cargar])
 
-  const marcarLeida = useCallback(async (id: string) => {
-    const supabase = createClient()
-    await supabase.rpc('marcar_notificacion_leida', { p_id: id })
-    // optimistic update
-    setNotificaciones(prev =>
-      prev.map(n => n.id === id ? { ...n, leida: true, leida_en: new Date().toISOString() } : n)
-    )
-  }, [])
+  const marcar = useCallback(async (id?: string) => {
+    if (!isAdmin || busy.current) return
+    busy.current = true
+    setGuardando(true)
+    try {
+      const supabase = createClient()
+      const { error: rpcError } = id
+        ? await supabase.rpc('marcar_notificacion_leida', { p_id: id })
+        : await supabase.rpc('marcar_todas_notificaciones_leidas')
+      if (rpcError) {
+        setError('No se pudo guardar el estado de lectura. Inténtalo de nuevo.')
+        return
+      }
+      await cargar()
+    } catch {
+      setError('No se pudo guardar el estado de lectura. Revisa tu conexión.')
+    } finally {
+      busy.current = false
+      setGuardando(false)
+    }
+  }, [isAdmin, cargar])
 
-  const marcarTodasLeidas = useCallback(async () => {
-    const supabase = createClient()
-    await supabase.rpc('marcar_todas_notificaciones_leidas')
-    // optimistic update
-    const ahora = new Date().toISOString()
-    setNotificaciones(prev =>
-      prev.map(n => n.leida ? n : { ...n, leida: true, leida_en: ahora })
-    )
-  }, [])
-
-  return { notificaciones, noLeidas, loading, marcarLeida, marcarTodasLeidas, recargar: cargar }
+  const marcarLeida = useCallback((id: string) => marcar(id), [marcar])
+  const marcarTodasLeidas = useCallback(() => marcar(), [marcar])
+  return { notificaciones: isAdmin ? notificaciones : [], noLeidas: isAdmin ? noLeidas : 0, loading, error, guardando, marcarLeida, marcarTodasLeidas, recargar: cargar }
 }

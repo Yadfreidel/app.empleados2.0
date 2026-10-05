@@ -1,6 +1,7 @@
 'use client'
 // components/ui/Modal.tsx
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useId, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import Button from './Button'
 
@@ -22,6 +23,7 @@ const maxWidths = {
 }
 
 export default function Modal({ open, onClose, title, children, maxWidth = 'md', footer }: ModalProps) {
+  const titleId = useId()
   // Close on Escape
   useEffect(() => {
     if (!open) return
@@ -37,19 +39,19 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'md',
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  if (!open) return null
+  if (!open || typeof document === 'undefined') return null
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div className="fm-backdrop" onClick={onClose} aria-hidden="true" />
       {/* Modal */}
-      <div className="fm-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div className="fm-modal" role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
         <div className={`fm-modal-content w-full ${maxWidths[maxWidth]} bg-card text-foreground border border-border shadow-xl rounded-xl`}>
           {/* Header */}
           {title && (
-            <div className="flex items-center justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-border">
-              <h2 id="modal-title" className="text-lg font-bold text-foreground">{title}</h2>
+            <div className="flex shrink-0 items-center justify-between gap-3 px-5 pt-4 sm:px-6 sm:pt-5 pb-3 border-b border-border">
+              <h2 id={titleId} className="text-lg font-bold text-foreground">{title}</h2>
               <Button
                 variant="ghost"
                 size="icon"
@@ -62,18 +64,18 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'md',
             </div>
           )}
           {/* Body */}
-          <div className="px-5 sm:px-6 py-4 sm:py-5 max-h-[calc(85vh-8rem)] overflow-y-auto">
+          <div className="fm-modal-body px-5 py-4 sm:px-6 sm:py-5" tabIndex={0} aria-label="Contenido del formulario">
             {children}
           </div>
           {/* Footer */}
           {footer && (
-            <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-3 border-t border-border flex justify-end gap-3 flex-wrap">
+            <div className="fm-modal-footer border-t border-border bg-card px-5 pb-4 pt-3 sm:px-6 sm:pb-5">
               {footer}
             </div>
           )}
         </div>
       </div>
-    </>
+    </>, document.body
   )
 }
 

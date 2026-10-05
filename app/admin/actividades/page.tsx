@@ -1,6 +1,8 @@
 'use client'
 // app/(admin)/actividades/page.tsx
-import { useState, useEffect, useCallback } from 'react'
+import { Suspense, useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Activity, Plus, Pencil, Trash2, Search, Eye, EyeOff, Clock, Building2 } from 'lucide-react'
 import type { Activity as ActivityType, ActivityFormData, Hotel, OperationType } from '@/types'
 import Button from '@/components/ui/Button'
@@ -123,6 +125,12 @@ function ActivityForm({
 }
 
 export default function ActividadesPage() {
+  return <Suspense fallback={<Skeleton className="h-40 rounded-xl" />}><ActividadesContent /></Suspense>
+}
+
+function ActividadesContent() {
+  const searchParams = useSearchParams()
+  const selectedActivityId = searchParams.get('actividad')
   const [activities, setActivities] = useState<ActivityType[]>([])
   const [hotels, setHotels]         = useState<Hotel[]>([])
   const [opTypes, setOpTypes]       = useState<OperationType[]>([])
@@ -231,8 +239,9 @@ export default function ActividadesPage() {
       a.title.toLowerCase().includes(search.toLowerCase()) ||
       (a.hotel as Hotel | undefined)?.name.toLowerCase().includes(search.toLowerCase())
     const matchStatus = !filterStatus || a.status === filterStatus
-    return matchSearch && matchStatus
+    return selectedActivityId ? a.id === selectedActivityId : matchSearch && matchStatus
   })
+  const selectedActivity = activities.find(a => a.id === selectedActivityId)
 
   return (
     <div className="space-y-6 fm-animate-fadein">
@@ -248,6 +257,19 @@ export default function ActividadesPage() {
       </div>
 
       {/* Filters */}
+      {selectedActivityId && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
+          <p className="text-sm font-medium text-foreground">Actividad seleccionada desde las notificaciones</p>
+          <Link href="/admin/actividades" className="text-sm font-semibold text-emerald-700 underline underline-offset-4 dark:text-emerald-400">Ver todas las actividades</Link>
+        </div>
+      )}
+      {selectedActivity?.confirmado_nombre && (
+          <section aria-label="Confirmación del empleado" className="space-y-2 rounded-xl border border-border bg-card p-4">
+            <p className="text-sm font-semibold text-foreground">Confirmada por {selectedActivity.confirmado_nombre}</p>
+            {selectedActivity.confirmado_en && <p className="text-xs text-muted-foreground">{new Date(selectedActivity.confirmado_en).toLocaleString('es-DO')}</p>}
+            {selectedActivity.confirmacion_nota && <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{selectedActivity.confirmacion_nota}</p>}
+          </section>
+      )}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-48">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />

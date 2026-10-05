@@ -429,6 +429,9 @@ body {
   padding: 1rem;
 }
 .fm-modal-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: var(--card);
   color: var(--card-foreground);
   border: 1px solid var(--border);
@@ -436,6 +439,33 @@ body {
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-height: 90vh;
-  overflow-y: auto;
+  max-height: 90dvh;
+  overflow: hidden;
   animation: fm-scalein 0.18s ease both;
+}
+.fm-modal-body {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-border-2) var(--color-surface-2);
+  -webkit-overflow-scrolling: touch;
+}
+.fm-modal-body::-webkit-scrollbar {
+  width: 12px;
+}
+.fm-modal-body::-webkit-scrollbar-thumb {
+  background: var(--color-text-faint);
+  border: 3px solid var(--color-surface-2);
+  border-radius: 999px;
+}
+.fm-modal-body::-webkit-scrollbar-track {
+  background: var(--color-surface-2);
+  border-radius: 999px;
+}
+.fm-modal-footer {
+  flex-shrink: 0;
+  z-index: 1;
 }
