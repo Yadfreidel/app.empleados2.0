@@ -1,7 +1,8 @@
 'use client'
 // app/(admin)/hoteles/page.tsx
 import { useState, useEffect, useCallback } from 'react'
-import { Building2, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search } from 'lucide-react'
+import { Building2, CalendarDays, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search } from 'lucide-react'
+import Link from 'next/link'
 import type { Hotel, HotelFormData } from '@/types'
 import Button from '@/components/ui/Button'
 import Modal, { ConfirmModal } from '@/components/ui/Modal'
@@ -245,7 +246,13 @@ export default function HotelesPage() {
                 {h.location && (
                   <p className="text-xs text-muted-foreground truncate">{h.location}</p>
                 )}
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border">
+                  <Link
+                    href={`/admin/hoteles/${h.id}/calendario`}
+                    className="fm-btn fm-btn-secondary fm-btn-sm min-h-[40px] px-3"
+                  >
+                    <CalendarDays size={14} /> Calendario áreas
+                  </Link>
                   <Button
                     id={`btn-edit-hotel-mobile-${h.id}`}
                     variant="outline"
@@ -318,6 +325,14 @@ export default function HotelesPage() {
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Link
+                            href={`/admin/hoteles/${h.id}/calendario`}
+                            className="fm-btn fm-btn-ghost fm-btn-icon min-w-[40px] min-h-[40px] text-muted-foreground hover:text-foreground"
+                            aria-label="Calendario por áreas"
+                            title="Calendario por áreas"
+                          >
+                            <CalendarDays size={15} />
+                          </Link>
                           <Button
                             id={`btn-edit-hotel-${h.id}`}
                             variant="ghost"

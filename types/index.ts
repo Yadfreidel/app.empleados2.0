@@ -50,7 +50,10 @@ export interface Activity {
   published: boolean
   notes: string | null
   created_at: string
-  updated_at: string
+  confirmado_por?: string | null
+  confirmado_nombre?: string | null
+  confirmado_en?: string | null
+  confirmacion_nota?: string | null
   // Joins
   hotel?: Hotel
   operation_type?: OperationType

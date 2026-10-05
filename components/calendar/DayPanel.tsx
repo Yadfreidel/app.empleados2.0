@@ -15,9 +15,10 @@ interface DayPanelProps {
   activities: Activity[]
   loading?: boolean
   onClose: () => void
+  onActivityUpdated?: (activity: Activity) => void
 }
 
-export default function DayPanel({ date, activities, loading, onClose }: DayPanelProps) {
+export default function DayPanel({ date, activities, loading, onClose, onActivityUpdated }: DayPanelProps) {
   if (!date) return null
 
   const dateLabel = capitalize(format(date, "EEEE d 'de' MMMM", { locale: es }))
@@ -71,7 +72,11 @@ export default function DayPanel({ date, activities, loading, onClose }: DayPane
           <EmptyCalendarDay />
         ) : (
           activities.map(activity => (
-            <ActivityCard key={activity.id} activity={activity} />
+            <ActivityCard
+              key={activity.id}
+              activity={activity}
+              onActivityUpdated={onActivityUpdated}
+            />
           ))
         )}
       </div>

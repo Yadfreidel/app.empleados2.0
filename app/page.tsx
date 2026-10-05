@@ -7,6 +7,7 @@ import Header from '@/components/layout/Header'
 import CalendarGrid from '@/components/calendar/CalendarGrid'
 import DayPanel from '@/components/calendar/DayPanel'
 import CalendarFilters from '@/components/calendar/CalendarFilters'
+import AreaCalendarSection from '@/components/calendar/AreaCalendarSection'
 import Legend from '@/components/calendar/Legend'
 import { CalendarSkeleton } from '@/components/ui/Skeleton'
 
@@ -65,6 +66,10 @@ export default function CalendarPage() {
   const dayActivities = selectedDate
     ? filteredActivities.filter(act => act.date === format(selectedDate, 'yyyy-MM-dd'))
     : []
+
+  function handleActivityUpdated(updated: Activity) {
+    setAllActivities(prev => prev.map(a => a.id === updated.id ? updated : a))
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -125,11 +130,16 @@ export default function CalendarPage() {
                   activities={dayActivities}
                   loading={loading}
                   onClose={() => setSelectedDate(null)}
+                  onActivityUpdated={handleActivityUpdated}
                 />
               </div>
             </>
           )}
         </div>
+
+        <section className="mt-10 border-t border-border pt-6">
+          <AreaCalendarSection />
+        </section>
       </main>
 
       {/* Footer */}

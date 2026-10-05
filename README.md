@@ -67,21 +67,50 @@ app.empleados/
 ## Configuración y Puesta en Marcha con Supabase
 
 1. Crea tu proyecto en [Supabase](https://supabase.com).
-2. Ve a **SQL Editor** en tu panel de Supabase y ejecuta el contenido de [`supabase/schema.sql`](supabase/schema.sql).
+2. Ve a **SQL Editor** en tu panel de Supabase y ejecuta:
+   - [`supabase/schema.sql`](supabase/schema.sql) (esquema base)
+   - [`supabase/migrations/002_calendario_por_areas.sql`](supabase/migrations/002_calendario_por_areas.sql) (tablas de áreas y servicios por área)
+   - [`supabase/migrations/003_confirmacion_area_servicios.sql`](supabase/migrations/003_confirmacion_area_servicios.sql) (auditoría de confirmación de servicios)
+   - [`supabase/migrations/004_notificaciones_y_area_operacion.sql`](supabase/migrations/004_notificaciones_y_area_operacion.sql) (notificaciones en tiempo real y RPC atómico de confirmación)
 3. Copia el archivo `.env.local.example` a `.env.local`:
    ```bash
    cp .env.local.example .env.local
    ```
 4. Completa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` en `.env.local`.
-5. En **Authentication > Users** de Supabase, crea tu usuario administrador y asígnale el rol `'admin'` en `profiles` (o vía user metadata `{"role": "admin"}`).
+5. En **Authentication > Users** de Supabase, crea los usuarios y asígnales rol `'admin'` o `'employee'` en la tabla `profiles`.
+
+## Nuevas Funcionalidades Implementadas
+
+1. **Calendario por Áreas**:
+   - Vista por matriz mensual organizada por áreas operativas en filas y días en columnas.
+   - Filtros de hotel, área, mes/año y estado (Pendiente, Realizado, Todos).
+   - Actualización en tiempo real vía Supabase Realtime.
+
+2. **Importación Excel (.xlsx)**:
+   - Carga de planillas Excel con áreas en filas y marcas `X` en columnas de días.
+   - Selector de hotel, mes y año con detección del número de días reales del mes.
+   - **Vista previa** interactiva antes de guardar, con desglose de áreas a crear y servicios a programar.
+   - Detección de duplicados y protección de servicios ya confirmados/realizados.
+
+3. **Confirmación de Realización**:
+   - Empleados y administradores autenticados pueden marcar actividades como realizadas.
+   - Registro automático en base de datos del usuario que confirmó (`confirmado_por`) y marca temporal exacta (`confirmado_en`).
+   - Bloqueo de re-confirmación para preservar la auditoría.
+
+4. **Notificaciones al Administrador**:
+   - Campana de notificaciones en la barra de navegación del Header y del panel Admin con conteo de no leídas en tiempo real.
+   - Detalle completo: nombre del empleado, hotel, área, fecha y estado.
+   - Acciones para marcar individualmente o todas como leídas.
 
 ## Estado del Proyecto
 
 | Módulo / Fase | Estado | Descripción |
 |---|---|---|
 | Auditoría & Core | ✅ Completado | Tipos TypeScript, Zod validations, Next.js 16 (Turbopack) |
-| Base de Datos Supabase | ✅ Completado | Schema DDL, RLS policies, trigger auth, índices y seeds |
-| Calendario Público | ✅ Completado | Conexión Supabase, filtros, panel diario, fallback demo |
-| Panel de Administración | ✅ Completado | Dashboard con métricas, CRUD de Actividades, Hoteles y Operaciones |
-| Autenticación & Seguridad | ✅ Completado | Login con Supabase Auth, middleware de protección de rutas `/admin` |
+| Base de Datos Supabase | ✅ Completado | Schema DDL, RLS policies, trigger auth, migraciones 002, 003 y 004 |
+| Calendario General y por Áreas | ✅ Completado | Vista por días y vista matricial por áreas con filtros y Realtime |
+| Importador Excel (.xlsx) | ✅ Completado | Modal admin con parsing seguro, preview y guardado no destructivo |
+| Confirmación de Servicios | ✅ Completado | RPC atómico transaccional con auditoría de empleado y timestamp |
+| Notificaciones en Tiempo Real | ✅ Completado | Hook `useNotificaciones`, Realtime listener y componente `NotificacionesCampana` |
 | Build de Producción | ✅ Verificado | `npm run build` compila al 100% sin errores de tipos |
+

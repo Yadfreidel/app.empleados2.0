@@ -11,6 +11,7 @@ import Logo from '@/components/layout/Logo'
 import Button from '@/components/ui/Button'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { cn } from '@/lib/utils'
+import NotificacionesCampana from '@/components/layout/NotificacionesCampana'
 
 const NAV_ITEMS = [
   { href: '/admin/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
@@ -134,7 +135,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/">
             <Logo size="sm" />
           </Link>
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <NotificacionesCampana isAdmin={roleStatus === 'admin'} />
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Nav */}

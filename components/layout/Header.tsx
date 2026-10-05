@@ -8,6 +8,7 @@ import Logo from './Logo'
 import Button from '@/components/ui/Button'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { cn } from '@/lib/utils'
+import NotificacionesCampana from './NotificacionesCampana'
 
 interface HeaderProps {
   isAdmin?: boolean
@@ -59,6 +60,9 @@ export default function Header({ isAdmin, onAdminLogout }: HeaderProps) {
           <div className="flex items-center gap-1 sm:gap-2">
             {/* Theme Toggle Button */}
             <ThemeToggle />
+
+            {/* Campana de notificaciones (solo admin) */}
+            <NotificacionesCampana isAdmin={!!isAdmin} />
 
             {isAdmin ? (
               <Button variant="ghost" size="sm" onClick={onAdminLogout} className="hidden md:inline-flex min-h-[44px]">

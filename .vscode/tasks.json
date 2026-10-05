@@ -1,0 +1,72 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Update Company Favicons",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Add-Type -AssemblyName System.Drawing; $source = [System.Drawing.Image]::FromFile('public/images/logo.png'); $bitmap = [System.Drawing.Bitmap]::new(32, 32); $graphics = [System.Drawing.Graphics]::FromImage($bitmap); $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $graphics.DrawImage($source, 0, 0, 32, 32); $handle = $bitmap.GetHicon(); $icon = [System.Drawing.Icon]::FromHandle($handle); $stream = [System.IO.File]::Create('app/favicon.ico'); $icon.Save($stream); $stream.Dispose(); [System.Runtime.InteropServices.Marshal]::DestroyIcon($handle); $graphics.Dispose(); $bitmap.Dispose(); $source.Dispose(); Copy-Item 'public/images/logo.png' 'app/icon.png' -Force"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Update Company Favicons Retry",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Add-Type -AssemblyName System.Drawing; $source = [System.Drawing.Image]::FromFile(\"public/images/logo.png\"); $bitmap = [System.Drawing.Bitmap]::new(32, 32); $graphics = [System.Drawing.Graphics]::FromImage($bitmap); $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $graphics.DrawImage($source, 0, 0, 32, 32); $handle = $bitmap.GetHicon(); $icon = [System.Drawing.Icon]::FromHandle($handle); $stream = [System.IO.File]::Create(\"app/favicon.ico\"); $icon.Save($stream); $stream.Dispose(); [System.Runtime.InteropServices.Marshal]::DestroyIcon($handle); $graphics.Dispose(); $bitmap.Dispose(); $source.Dispose(); Copy-Item \"public/images/logo.png\" \"app/icon.png\" -Force"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Convert Company Logo to Favicon",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".temp-generate-favicon.ps1"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Convert Company Logo to Favicon Retry",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".temp-generate-favicon.ps1"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Build After Favicon Update",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}
