@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { format, getDaysInMonth, isSunday, isToday } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, LogIn, Clock, Building2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, LogIn, Clock, Building2, FileDown, Loader2 } from 'lucide-react'
+import { useConfiguracion } from '@/lib/configuracion/useConfiguracion'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import {
@@ -49,12 +50,28 @@ export default function AreaMatrix({
   const [errorConfirmacion, setErrorConfirmacion] = useState<string | null>(null)
   const [exitoConfirmacion, setExitoConfirmacion] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  const [exportando, setExportando] = useState(false)
+  const [errorExportar, setErrorExportar] = useState<string | null>(null)
+  const { config } = useConfiguracion()
+
+  async function exportarPdf() {
+    setExportando(true)
+    setErrorExportar(null)
+    try {
+      const { exportarCalendarioPdf } = await import('@/lib/calendario-hotel/exportar-pdf')
+      await exportarCalendarioPdf(matriz, config.nombre_empresa)
+    } catch (error) {
+      console.error(error)
+      setErrorExportar('No se pudo generar el PDF. Inténtalo de nuevo.')
+    } finally {
+      setExportando(false)
+    }
+  }
 
   const mapa = new Map(servicios.map((servicio) => [`${servicio.area_id}|${servicio.fecha}`, servicio]))
   const mesPrevio = mes === 1 ? `${anio - 1}-12` : `${anio}-${String(mes - 1).padStart(2, '0')}`
   const mesSiguiente = mes === 12 ? `${anio + 1}-01` : `${anio}-${String(mes + 1).padStart(2, '0')}`
   const titulo = format(new Date(anio, mes - 1), 'MMMM yyyy', { locale: es })
-  const hoy = format(new Date(), 'yyyy-MM-dd')
 
   function clic(areaId: string, fecha: string) {
     const actual = mapa.get(`${areaId}|${fecha}`)
@@ -113,6 +130,19 @@ export default function AreaMatrix({
           <h3 className="text-lg font-bold text-foreground">{hotel.name}</h3>
           <p className="capitalize text-sm text-muted-foreground">Calendario de servicio · {titulo}</p>
         </div>
+        <div className="flex items-center gap-2">
+        {areas.length > 0 && (
+          <button
+            type="button"
+            id="btn-exportar-calendario-pdf"
+            onClick={exportarPdf}
+            disabled={exportando}
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground shadow-2xs transition-colors hover:bg-muted disabled:opacity-60"
+          >
+            {exportando ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+            {exportando ? 'Generando…' : 'Exportar PDF'}
+          </button>
+        )}
         {showMonthNav && (
           <nav className="flex items-center gap-1">
             <Link href={`${rutaBase}?mes=${mesPrevio}`} aria-label="Mes anterior" className="rounded-md p-2 hover:bg-muted">
@@ -123,7 +153,13 @@ export default function AreaMatrix({
             </Link>
           </nav>
         )}
+        </div>
       </header>
+      {errorExportar && (
+        <p role="alert" className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+          <AlertCircle size={15} className="shrink-0" /> {errorExportar}
+        </p>
+      )}
 
       {areas.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">

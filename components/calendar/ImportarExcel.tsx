@@ -1,9 +1,9 @@
-﻿'use client'
+'use client'
 
 import { useRef, useState, useTransition } from 'react'
-import { FileSpreadsheet, Eye, Upload, X, AlertTriangle } from 'lucide-react'
+import { Eye, Upload, X, AlertTriangle, FileText, Loader2 } from 'lucide-react'
 import Button from '@/components/ui/Button'
-import { importarCalendarioExcel, type ResultadoImportacion } from '@/lib/calendario-hotel/importar'
+import { importarCalendarioExcel, importarCalendarioParseado, type ResultadoImportacion } from '@/lib/calendario-hotel/importar'
 import { parsearCalendarioExcel, type CalendarioParseado } from '@/lib/calendario-hotel/parsear-excel'
 
 interface Props {
@@ -19,23 +19,34 @@ export default function ImportarExcel({ hotelId, mes }: Props) {
   const [resultado, setResultado] = useState<ResultadoImportacion | null>(null)
   const [guardando, startGuardar] = useTransition()
   const [parsedBuffer, setParsedBuffer] = useState<ArrayBuffer | null>(null)
+  const [esPdf, setEsPdf] = useState(false)
+  const [leyendo, setLeyendo] = useState(false)
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     setPreview(null)
     setPreviewError(null)
     setResultado(null)
-    if (!file || !file.name.endsWith('.xlsx')) {
-      setPreviewError('Selecciona un archivo .xlsx valido.')
+    const nombre = file?.name.toLowerCase() ?? ''
+    const pdf = nombre.endsWith('.pdf')
+    if (!file || (!nombre.endsWith('.xlsx') && !pdf)) {
+      setPreviewError('Selecciona un archivo Excel (.xlsx) o PDF válido.')
       return
     }
+    setEsPdf(pdf)
+    setLeyendo(true)
     try {
       const buffer = await file.arrayBuffer()
       setParsedBuffer(buffer)
-      const cal = parsearCalendarioExcel(buffer)
+      // pdf.js modifica el buffer que recibe; se le pasa una copia.
+      const cal = pdf
+        ? await (await import('@/lib/calendario-hotel/parsear-pdf')).parsearCalendarioPdf(buffer.slice(0))
+        : parsearCalendarioExcel(buffer)
       setPreview(cal)
     } catch (err) {
-      setPreviewError(err instanceof Error ? err.message : 'No se pudo leer el Excel.')
+      setPreviewError(err instanceof Error ? err.message : `No se pudo leer el ${pdf ? 'PDF' : 'Excel'}.`)
+    } finally {
+      setLeyendo(false)
     }
   }
 
@@ -48,13 +59,15 @@ export default function ImportarExcel({ hotelId, mes }: Props) {
   }
 
   function confirmarImportacion() {
-    if (!fileRef.current?.files?.[0] || !parsedBuffer) return
+    if (!fileRef.current?.files?.[0] || !parsedBuffer || !preview) return
     const form = new FormData()
     form.append('archivo', fileRef.current.files[0])
     form.append('hotelId', hotelId)
     form.append('mes', mesSeleccionado)
     startGuardar(async () => {
-      const res = await importarCalendarioExcel(null, form)
+      const res = esPdf
+        ? await importarCalendarioParseado({ hotelId, mes: mesSeleccionado, areas: preview.areas, avisos: preview.avisos })
+        : await importarCalendarioExcel(null, form)
       setResultado(res)
       if (res.ok) {
         setPreview(null)
@@ -77,11 +90,17 @@ export default function ImportarExcel({ hotelId, mes }: Props) {
         </label>
 
         <label className="grid gap-1 text-sm">
-          <span className="text-muted-foreground">Archivo Excel (.xlsx)</span>
-          <input ref={fileRef} type="file" accept=".xlsx"
+          <span className="text-muted-foreground">Archivo Excel (.xlsx) o PDF</span>
+          <input ref={fileRef} type="file" accept=".xlsx,.pdf,application/pdf"
             className="text-sm file:mr-2 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1.5"
             onChange={handleFileChange} />
         </label>
+
+        {leyendo && (
+          <span className="flex min-h-[44px] items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 size={16} className="animate-spin" /> Leyendo {esPdf ? 'PDF' : 'Excel'}…
+          </span>
+        )}
 
         {preview && !resultado && (
           <Button onClick={confirmarImportacion} loading={guardando}
@@ -103,7 +122,17 @@ export default function ImportarExcel({ hotelId, mes }: Props) {
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Eye size={16} />
             Vista previa — {preview.areas.length} areas detectadas
+            {esPdf && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                <FileText size={11} /> Desde PDF
+              </span>
+            )}
           </div>
+          {esPdf && (
+            <p className="text-xs text-muted-foreground">
+              Revisa que cada área y sus días coincidan con el PDF antes de guardar. Los PDF escaneados (fotos) no se pueden leer; usa el Excel o un PDF exportado desde Excel.
+            </p>
+          )}
 
           {preview.avisos.length > 0 && (
             <div className="flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3">

@@ -5,27 +5,50 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutDashboard, CalendarDays, Building2, Tag,
-  LogOut, Menu, X, ChevronRight
+  LogOut, Menu, X, ChevronRight, Settings, MessagesSquare
 } from 'lucide-react'
 import Logo from '@/components/layout/Logo'
 import Button from '@/components/ui/Button'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { cn } from '@/lib/utils'
 import NotificacionesCampana from '@/components/layout/NotificacionesCampana'
+import { useBandejaChats } from '@/lib/chat/useBandejaChats'
 
 const NAV_ITEMS = [
   { href: '/admin/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
   { href: '/admin/actividades', label: 'Actividades', icon: CalendarDays },
+  { href: '/admin/chats',       label: 'Chats',       icon: MessagesSquare },
   { href: '/admin/hoteles',     label: 'Hoteles',     icon: Building2 },
   { href: '/admin/operaciones', label: 'Operaciones', icon: Tag },
+  { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
 ]
+
+function BotonConfiguracion({ pathname }: { pathname: string }) {
+  const active = pathname.startsWith('/admin/configuracion')
+  return (
+    <Link
+      href="/admin/configuracion"
+      aria-label="Configuración"
+      title="Configuración"
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border transition-colors',
+        active ? 'bg-fm-green-700 text-white' : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
+      )}
+    >
+      <Settings size={20} />
+    </Link>
+  )
+}
 
 interface NavListProps {
   pathname: string
   onItemClick?: () => void
+  /** Contadores por ruta, p. ej. mensajes sin leer en Chats. */
+  contadores?: Record<string, number>
 }
 
-function NavList({ pathname, onItemClick }: NavListProps) {
+function NavList({ pathname, onItemClick, contadores = {} }: NavListProps) {
   return (
     <nav className="flex flex-col gap-1 flex-1" aria-label="Navegación de administrador">
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
@@ -45,7 +68,18 @@ function NavList({ pathname, onItemClick }: NavListProps) {
           >
             <Icon size={18} className={cn(!active && 'text-muted-foreground group-hover:text-foreground')} />
             <span>{label}</span>
-            {active && <ChevronRight size={15} className="ml-auto opacity-70" />}
+            {(contadores[href] ?? 0) > 0 && (
+              <span
+                className={cn(
+                  'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold',
+                  active ? 'bg-white text-fm-green-800' : 'bg-emerald-600 text-white'
+                )}
+                aria-label={`${contadores[href]} sin leer`}
+              >
+                {contadores[href] > 99 ? '99+' : contadores[href]}
+              </span>
+            )}
+            {active && !(contadores[href] > 0) && <ChevronRight size={15} className="ml-auto opacity-70" />}
           </Link>
         )
       })}
@@ -59,6 +93,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userEmail, setUserEmail]     = useState<string | null>(null)
   const [roleStatus, setRoleStatus]   = useState<'loading' | 'admin' | 'not_admin' | 'no_profile' | 'unauthenticated' | 'error'>('loading')
+  const { totalNoLeidos } = useBandejaChats(roleStatus === 'admin')
+  const contadores = { '/admin/chats': totalNoLeidos }
 
   // Get current user email and profile
   useEffect(() => {
@@ -143,7 +179,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <div className="flex-1 px-3 py-4 overflow-y-auto">
-          <NavList pathname={pathname} />
+          <NavList pathname={pathname} contadores={contadores} />
         </div>
 
         {/* User profile & Logout */}
@@ -197,7 +233,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Button>
             </div>
             <div className="flex-1 px-3 py-4 overflow-y-auto">
-              <NavList pathname={pathname} onItemClick={() => setSidebarOpen(false)} />
+              <NavList pathname={pathname} contadores={contadores} onItemClick={() => setSidebarOpen(false)} />
             </div>
             <div className="px-3 py-4 border-t border-border">
               <div className="flex items-center justify-between px-3 py-1 mb-2">
@@ -230,16 +266,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               id="btn-mobile-menu"
               variant="ghost"
               size="icon"
-              className="min-w-[44px] min-h-[44px]"
+              className="relative min-w-[44px] min-h-[44px]"
               onClick={() => setSidebarOpen(true)}
-              aria-label="Abrir menú"
+              aria-label={totalNoLeidos > 0 ? `Abrir menú (${totalNoLeidos} mensajes sin leer)` : 'Abrir menú'}
             >
               <Menu size={20} />
+              {totalNoLeidos > 0 && (
+                <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" aria-hidden="true" />
+              )}
             </Button>
             <Logo size="sm" />
           </div>
           <div className="flex items-center gap-2">
             <NotificacionesCampana isAdmin={roleStatus === 'admin'} />
+            <BotonConfiguracion pathname={pathname} />
             <ThemeToggle />
           </div>
         </header>

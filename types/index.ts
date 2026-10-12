@@ -59,6 +59,41 @@ export interface Activity {
   operation_type?: OperationType
 }
 
+export interface AppConfiguracion {
+  nombre_empresa: string
+  telefono_oficina: string | null
+  correo_oficina: string | null
+  chat_habilitado: boolean
+  foto_obligatoria_confirmar: boolean
+  max_fotos_evidencia: number
+  updated_at: string | null
+}
+
+export interface UsuarioAdmin {
+  id: string
+  email: string
+  name: string | null
+  role: UserRole
+  active: boolean
+  created_at: string
+  last_sign_in_at: string | null
+}
+
+export interface ActividadMensaje {
+  id: string
+  actividad_id: string
+  autor_id: string | null
+  autor_nombre: string | null
+  autor_rol: UserRole | null
+  contenido: string | null
+  adjunto_path: string | null
+  adjunto_tipo: string | null
+  adjunto_nombre: string | null
+  adjunto_tamano: number | null
+  es_evidencia: boolean
+  created_at: string
+}
+
 export interface AuditLog {
   id: string
   user_id: string

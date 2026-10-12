@@ -44,8 +44,9 @@ async function main() {
   if (!url || !clave) throw new Error('Configura NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en .env.local.')
   const supabase = createClient(url, clave, { auth: { persistSession: false } })
 
-  let { data: hotel, error } = await supabase.from('hotels').select('id, name').ilike('name', nombreHotel).maybeSingle()
-  if (error) throw error
+  const busqueda = await supabase.from('hotels').select('id, name').ilike('name', nombreHotel).maybeSingle()
+  if (busqueda.error) throw busqueda.error
+  let hotel = busqueda.data
   if (!hotel) {
     const creado = await supabase.from('hotels').insert({ name: nombreHotel }).select('id, name').single()
     if (creado.error) throw creado.error

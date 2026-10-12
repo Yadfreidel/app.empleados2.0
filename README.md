@@ -6,7 +6,7 @@ Calendario operativo digital para F&M Fumigación. Permite al administrador regi
 
 | Tecnología | Versión | Uso |
 |---|---|---|
-| Next.js | 14+ | Framework (App Router) |
+| Next.js | 16 | Framework (App Router) |
 | TypeScript | 5+ | Tipado estático |
 | Tailwind CSS | 4 | Estilos |
 | Supabase | latest | DB + Auth + RLS |
@@ -58,7 +58,7 @@ app.empleados/
 │   ├── validations/      # Schemas Zod
 │   └── utils/            # Helpers, tokens de color/status
 ├── types/                # Tipos TypeScript globales
-├── middleware.ts          # Protección de rutas /admin
+├── proxy.ts               # Protección de rutas /admin (antes middleware.ts)
 ├── supabase/
 │   └── schema.sql        # Esquema completo DDL + RLS + Triggers + Datos semilla
 └── .env.local.example    # Plantilla de variables de entorno
@@ -72,12 +72,28 @@ app.empleados/
    - [`supabase/migrations/002_calendario_por_areas.sql`](supabase/migrations/002_calendario_por_areas.sql) (tablas de áreas y servicios por área)
    - [`supabase/migrations/003_confirmacion_area_servicios.sql`](supabase/migrations/003_confirmacion_area_servicios.sql) (auditoría de confirmación de servicios)
    - [`supabase/migrations/004_notificaciones_y_area_operacion.sql`](supabase/migrations/004_notificaciones_y_area_operacion.sql) (notificaciones en tiempo real y RPC atómico de confirmación)
+   - [`supabase/migrations/005_confirmacion_actividades_generales.sql`](supabase/migrations/005_confirmacion_actividades_generales.sql) (confirmación de actividades generales)
+   - [`supabase/migrations/20261005165015_actividad_notificaciones_admin.sql`](supabase/migrations/20261005165015_actividad_notificaciones_admin.sql) (confirmación segura de actividades con notificación al administrador)
+   - [`supabase/migrations/006_chat_actividades.sql`](supabase/migrations/006_chat_actividades.sql) (chat por actividad con fotos y PDFs; bucket privado `actividad-adjuntos`)
+   - [`supabase/migrations/007_configuracion_y_usuarios.sql`](supabase/migrations/007_configuracion_y_usuarios.sql) (Configuración del panel admin y listado de usuarios)
+   - Despliega la Edge Function `admin-usuarios` para crear y editar usuarios desde el panel: ver [`supabase/functions/README.md`](supabase/functions/README.md)
 3. Copia el archivo `.env.local.example` a `.env.local`:
    ```bash
    cp .env.local.example .env.local
    ```
 4. Completa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` en `.env.local`.
-5. En **Authentication > Users** de Supabase, crea los usuarios y asígnales rol `'admin'` o `'employee'` en la tabla `profiles`.
+5. Crea el primer administrador: en **Authentication > Users** crea tu usuario y ejecuta [`supabase/admin_setup.sql`](supabase/admin_setup.sql) (opción B) para darle rol `admin`. Los demás usuarios (supervisores y administradores) se crean desde **Admin → Configuración → Usuarios**.
+6. Recomendado: en **Authentication > Sign In / Providers** desactiva **Allow new users to sign up**.
+
+## Despliegue en Vercel
+
+La app necesita servidor (Server Actions, `proxy.ts` y rutas dinámicas), por eso se publica en Vercel y no en GitHub Pages.
+
+1. En [vercel.com](https://vercel.com) → **Add New… → Project** → importa este repositorio de GitHub.
+2. Framework: **Next.js** (se detecta solo). No cambies los comandos de build.
+3. En **Environment Variables** agrega `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` (los mismos valores de `.env.local`).
+4. Pulsa **Deploy**. Cada `git push` a `main` vuelve a desplegar automáticamente.
+5. En Supabase → **Authentication → URL Configuration**, pon la URL de Vercel (`https://….vercel.app`) como **Site URL**.
 
 ## Nuevas Funcionalidades Implementadas
 
@@ -101,6 +117,12 @@ app.empleados/
    - Campana de notificaciones en la barra de navegación del Header y del panel Admin con conteo de no leídas en tiempo real.
    - Detalle completo: nombre del empleado, hotel, área, fecha y estado.
    - Acciones para marcar individualmente o todas como leídas.
+
+5. **Chat por actividad** (migración 006): mensajes, fotos (cámara o galería, comprimidas para datos móviles) y PDFs en tiempo real desde el panel de confirmación; bandeja **Admin → Chats** con no leídos.
+
+6. **Configuración** (migración 007 + Edge Function `admin-usuarios`): alta y edición de usuarios, datos de la empresa, foto obligatoria al confirmar y estado del sistema.
+
+7. **Calendario por áreas en PDF**: importación desde PDF exportado de Excel (con vista previa) y exportación a PDF con resumen mensual y detalle día por día.
 
 ## Estado del Proyecto
 

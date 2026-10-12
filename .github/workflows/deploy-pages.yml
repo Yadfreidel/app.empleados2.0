@@ -1,9 +1,9 @@
 name: Deploy to GitHub Pages
 
+# La app se despliega en Vercel: necesita servidor (Server Actions, proxy y rutas
+# dinámicas) y GitHub Pages solo sirve archivos estáticos, por lo que este build
+# falla. Se deja solo para ejecución manual.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:

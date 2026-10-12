@@ -3,10 +3,11 @@
 import { Suspense, useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Activity, Plus, Pencil, Trash2, Search, Eye, EyeOff, Clock, Building2 } from 'lucide-react'
+import { Activity, Plus, Pencil, Trash2, Search, Eye, EyeOff, Clock, Building2, MessagesSquare } from 'lucide-react'
 import type { Activity as ActivityType, ActivityFormData, Hotel, OperationType } from '@/types'
 import Button from '@/components/ui/Button'
 import Modal, { ConfirmModal } from '@/components/ui/Modal'
+import ChatActividad from '@/components/chat/ChatActividad'
 import { Skeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge'
@@ -144,6 +145,7 @@ function ActividadesContent() {
   const [saving, setSaving]         = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ActivityType | null>(null)
   const [deleting, setDeleting]     = useState(false)
+  const [chatTarget, setChatTarget] = useState<ActivityType | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -268,6 +270,9 @@ function ActividadesContent() {
             <p className="text-sm font-semibold text-foreground">Confirmada por {selectedActivity.confirmado_nombre}</p>
             {selectedActivity.confirmado_en && <p className="text-xs text-muted-foreground">{new Date(selectedActivity.confirmado_en).toLocaleString('es-DO')}</p>}
             {selectedActivity.confirmacion_nota && <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{selectedActivity.confirmacion_nota}</p>}
+            <Button variant="secondary" size="sm" leftIcon={<MessagesSquare size={14} />} onClick={() => setChatTarget(selectedActivity)} className="min-h-[40px]">
+              Ver chat y evidencias
+            </Button>
           </section>
       )}
       <div className="flex flex-wrap gap-3">
@@ -351,6 +356,16 @@ function ActividadesContent() {
                       <PriorityBadge priority={a.priority} />
                     </div>
                     <div className="flex items-center gap-1">
+                      <Button
+                        id={`btn-chat-act-mobile-${a.id}`}
+                        variant="ghost"
+                        size="icon"
+                        className="min-w-[40px] min-h-[40px] text-muted-foreground hover:text-foreground"
+                        onClick={() => setChatTarget(a)}
+                        aria-label="Abrir chat"
+                      >
+                        <MessagesSquare size={15} />
+                      </Button>
                       <Button
                         id={`btn-edit-act-mobile-${a.id}`}
                         variant="ghost"
@@ -442,6 +457,16 @@ function ActividadesContent() {
                         <td className="px-5 py-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button
+                              id={`btn-chat-act-${a.id}`}
+                              variant="ghost"
+                              size="icon"
+                              className="min-w-[40px] min-h-[40px] text-muted-foreground hover:text-foreground"
+                              onClick={() => setChatTarget(a)}
+                              aria-label="Abrir chat"
+                            >
+                              <MessagesSquare size={15} />
+                            </Button>
+                            <Button
                               id={`btn-edit-act-${a.id}`}
                               variant="ghost"
                               size="icon"
@@ -472,6 +497,16 @@ function ActividadesContent() {
           </div>
         </>
       )}
+
+      {/* Chat de la actividad */}
+      <Modal
+        open={!!chatTarget}
+        onClose={() => setChatTarget(null)}
+        title={chatTarget ? `Chat · ${chatTarget.title}` : 'Chat'}
+        maxWidth="lg"
+      >
+        {chatTarget && <ChatActividad key={chatTarget.id} actividadId={chatTarget.id} abierto={!!chatTarget} />}
+      </Modal>
 
       {/* Modal */}
       <Modal
