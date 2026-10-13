@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutDashboard, CalendarDays, Building2, Tag,
-  LogOut, Menu, X, ChevronRight, Settings, MessagesSquare, FileText
+  LogOut, Menu, X, ChevronRight, Settings, MessagesSquare, FileText, CalendarRange, Trophy
 } from 'lucide-react'
 import Logo from '@/components/layout/Logo'
 import Button from '@/components/ui/Button'
@@ -14,12 +14,15 @@ import { cn } from '@/lib/utils'
 import NotificacionesCampana from '@/components/layout/NotificacionesCampana'
 import { useBandejaChats } from '@/lib/chat/useBandejaChats'
 import { olvidarUsuarioLocal } from '@/lib/offline/sincronizacion'
+import Avatar from '@/components/perfil/Avatar'
+import { usePerfil } from '@/lib/perfil/perfil'
 
 const NAV_ITEMS = [
   { href: '/admin/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
   { href: '/admin/actividades', label: 'Actividades', icon: CalendarDays },
   { href: '/admin/chats',       label: 'Chats',       icon: MessagesSquare },
   { href: '/admin/informes',    label: 'Informes',    icon: FileText },
+  { href: '/admin/excelencia',  label: 'Excelencia',  icon: Trophy },
   { href: '/admin/hoteles',     label: 'Hoteles',     icon: Building2 },
   { href: '/admin/operaciones', label: 'Operaciones', icon: Tag },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
@@ -43,6 +46,20 @@ function BotonConfiguracion({ pathname }: { pathname: string }) {
   )
 }
 
+/** Acceso directo al calendario operativo (la página principal). */
+function BotonCalendario() {
+  return (
+    <Link
+      href="/"
+      aria-label="Ver calendario"
+      title="Ver calendario"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-fm-green-300 bg-fm-green-50 text-fm-green-800 transition-colors hover:bg-fm-green-100 dark:border-fm-green-800 dark:bg-fm-green-950 dark:text-fm-green-300"
+    >
+      <CalendarRange size={20} />
+    </Link>
+  )
+}
+
 interface NavListProps {
   pathname: string
   onItemClick?: () => void
@@ -53,6 +70,14 @@ interface NavListProps {
 function NavList({ pathname, onItemClick, contadores = {} }: NavListProps) {
   return (
     <nav className="flex flex-col gap-1 flex-1" aria-label="Navegación de administrador">
+      <Link
+        href="/"
+        onClick={onItemClick}
+        className="mb-2 flex min-h-[44px] items-center gap-3 rounded-fm border border-white/15 bg-white/5 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+      >
+        <CalendarRange size={18} />
+        <span>Ver calendario</span>
+      </Link>
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || (href !== '/admin' && pathname.startsWith(href))
         return (
@@ -63,18 +88,18 @@ function NavList({ pathname, onItemClick, contadores = {} }: NavListProps) {
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-fm text-sm font-semibold transition-all group min-h-[44px]',
               active
-                ? 'bg-fm-green-700 text-white shadow-sm dark:bg-fm-green-800'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                ? 'bg-fm-navy-700 text-white shadow-sm'
+                : 'text-slate-300 hover:bg-white/5 hover:text-white'
             )}
             aria-current={active ? 'page' : undefined}
           >
-            <Icon size={18} className={cn(!active && 'text-muted-foreground group-hover:text-foreground')} />
+            <Icon size={18} className={cn(!active && 'text-slate-400 group-hover:text-white')} />
             <span>{label}</span>
             {(contadores[href] ?? 0) > 0 && (
               <span
                 className={cn(
                   'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold',
-                  active ? 'bg-white text-fm-green-800' : 'bg-emerald-600 text-white'
+                  active ? 'bg-white text-fm-navy-800' : 'bg-emerald-500 text-white'
                 )}
                 aria-label={`${contadores[href]} sin leer`}
               >
@@ -96,6 +121,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [userEmail, setUserEmail]     = useState<string | null>(null)
   const [roleStatus, setRoleStatus]   = useState<'loading' | 'admin' | 'not_admin' | 'no_profile' | 'unauthenticated' | 'error'>('loading')
   const { totalNoLeidos } = useBandejaChats(roleStatus === 'admin')
+  const { perfil, avatarUrl } = usePerfil()
+  const nombreUsuario = perfil?.name?.trim() || userEmail || '…'
   const contadores = { '/admin/chats': totalNoLeidos }
 
   // Get current user email and profile
@@ -169,11 +196,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen flex bg-background text-foreground">
       {/* ── Desktop Sidebar ── */}
-      <aside className="hidden lg:flex flex-col w-60 xl:w-64 flex-shrink-0 h-screen sticky top-0 bg-card border-r border-border">
+      <aside className="fm-sidebar hidden lg:flex flex-col w-60 xl:w-64 flex-shrink-0 h-screen sticky top-0 border-r">
         {/* Logo & Theme Toggle */}
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
           <Link href="/">
-            <Logo size="sm" />
+            <Logo size="sm" oscuro />
           </Link>
           <div className="flex items-center gap-1">
             <NotificacionesCampana isAdmin={roleStatus === 'admin'} />
@@ -187,22 +214,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* User profile & Logout */}
-        <div className="px-3 py-4 border-t border-border">
-          <div className="px-3 py-2 mb-1">
-            <p className="text-xs font-semibold text-foreground truncate">{userEmail || '…'}</p>
-            <p className="text-xs text-muted-foreground">
-              {roleStatus === 'admin'
-                ? 'Administrador'
-                : roleStatus === 'loading'
-                ? 'Verificando rol…'
-                : roleStatus === 'no_profile'
-                ? 'Sin perfil en BD'
-                : 'Rol: Consulta'}
-            </p>
-          </div>
+        <div className="px-3 py-4 border-t border-white/10">
+          <Link href="/perfil" title="Mi perfil" className="flex items-center gap-3 rounded-lg px-3 py-2 mb-1 hover:bg-white/5">
+            <Avatar url={avatarUrl} nombre={nombreUsuario} tamano={36} className="ring-white/20 dark:ring-white/20" />
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold text-white truncate">{nombreUsuario}</span>
+              <span className="block text-xs text-slate-400">
+                {roleStatus === 'admin'
+                  ? 'Administrador · Mi perfil'
+                  : roleStatus === 'loading'
+                  ? 'Verificando rol…'
+                  : roleStatus === 'no_profile'
+                  ? 'Sin perfil en BD'
+                  : 'Rol: Consulta'}
+              </span>
+            </span>
+          </Link>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-fm text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors min-h-[44px]"
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-fm text-sm font-semibold text-red-300 hover:bg-white/5 hover:text-red-200 transition-colors min-h-[44px]"
           >
             <LogOut size={16} />
             Cerrar sesión
@@ -219,13 +249,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             aria-hidden="true"
           />
           <aside
-            className="fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 flex flex-col lg:hidden bg-card border-r border-border shadow-2xl fm-animate-scalein"
+            className="fm-sidebar fixed inset-y-0 left-0 w-72 max-w-[85vw] z-50 flex flex-col lg:hidden border-r shadow-2xl fm-animate-scalein"
             role="dialog"
             aria-modal="true"
             aria-label="Menú de navegación"
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <Logo size="sm" />
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <Logo size="sm" oscuro />
               <Button
                 variant="ghost"
                 size="icon"
@@ -239,19 +269,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="flex-1 px-3 py-4 overflow-y-auto">
               <NavList pathname={pathname} contadores={contadores} onItemClick={() => setSidebarOpen(false)} />
             </div>
-            <div className="px-3 py-4 border-t border-border">
+            <div className="px-3 py-4 border-t border-white/10">
               <div className="flex items-center justify-between px-3 py-1 mb-2">
-                <div className="truncate">
-                  <p className="text-xs font-semibold text-foreground truncate">{userEmail || '…'}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {roleStatus === 'admin' ? 'Administrador' : 'Rol no admin'}
-                  </p>
-                </div>
+                <Link href="/perfil" onClick={() => setSidebarOpen(false)} className="flex min-w-0 items-center gap-3 rounded-lg py-1 hover:bg-white/5">
+                  <Avatar url={avatarUrl} nombre={nombreUsuario} tamano={36} className="ring-white/20 dark:ring-white/20" />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-white truncate">{nombreUsuario}</span>
+                    <span className="block text-xs text-slate-400">{roleStatus === 'admin' ? 'Administrador · Mi perfil' : 'Rol no admin'}</span>
+                  </span>
+                </Link>
                 <ThemeToggle />
               </div>
               <button
                 onClick={() => { setSidebarOpen(false); handleLogout() }}
-                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-fm text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors min-h-[44px]"
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-fm text-sm font-semibold text-red-300 hover:bg-white/5 hover:text-red-200 transition-colors min-h-[44px]"
               >
                 <LogOut size={16} />
                 Cerrar sesión
@@ -279,10 +310,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" aria-hidden="true" />
               )}
             </Button>
-            <Logo size="sm" />
+            {/* En pantallas angostas solo el ícono, para que quepan los botones de la derecha. */}
+            <span className="hidden min-[420px]:block"><Logo size="sm" /></span>
+            <span className="min-[420px]:hidden"><Logo size="sm" showText={false} /></span>
           </div>
           <div className="flex items-center gap-2">
+            <BotonCalendario />
             <NotificacionesCampana isAdmin={roleStatus === 'admin'} />
+            <Link href="/perfil" aria-label="Mi perfil" className="hidden min-[420px]:block"><Avatar url={avatarUrl} nombre={nombreUsuario} tamano={36} /></Link>
             <BotonConfiguracion pathname={pathname} />
             <ThemeToggle />
           </div>

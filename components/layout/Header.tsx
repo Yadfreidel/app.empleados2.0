@@ -2,7 +2,7 @@
 // components/layout/Header.tsx
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { CalendarDays, LayoutDashboard, LogIn, Menu, X } from 'lucide-react'
+import { CalendarDays, LayoutDashboard, LayoutGrid, LogIn, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import Logo from './Logo'
 import Button from '@/components/ui/Button'
@@ -10,15 +10,25 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { cn } from '@/lib/utils'
 import NotificacionesCampana from './NotificacionesCampana'
 import IndicadorSincronizacion from '@/components/offline/IndicadorSincronizacion'
+import MenuUsuario from '@/components/perfil/MenuUsuario'
+import { cerrarSesion, usePerfil } from '@/lib/perfil/perfil'
+import { useRouter } from 'next/navigation'
+import { UserRound } from 'lucide-react'
 
 interface HeaderProps {
   isAdmin?: boolean
   onAdminLogout?: () => void
+  /** En PC el logo y la navegación están en el menú lateral: el encabezado solo muestra el título y las acciones. */
+  conBarraLateral?: boolean
+  titulo?: string
 }
 
-export default function Header({ isAdmin, onAdminLogout }: HeaderProps) {
+export default function Header({ isAdmin, onAdminLogout, conBarraLateral, titulo }: HeaderProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
+  // Con sesión iniciada se muestra el avatar y el menú de usuario en lugar del botón «Admin».
+  const { perfil } = usePerfil()
 
   const navItems = isAdmin
     ? [
@@ -27,19 +37,23 @@ export default function Header({ isAdmin, onAdminLogout }: HeaderProps) {
       ]
     : [
         { href: '/', label: 'Calendario', icon: CalendarDays },
+        { href: '/areas', label: 'Calendario por áreas', icon: LayoutGrid },
       ]
 
   return (
     <header className="sticky top-0 z-30 w-full bg-card/90 border-b border-border backdrop-blur-md transition-colors">
-      <div className="fm-container">
+      <div className={conBarraLateral ? 'w-full px-4 md:px-6 xl:px-8' : 'fm-container'}>
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0 focus-visible:outline-offset-4">
+          <Link href="/" className={cn('flex-shrink-0 focus-visible:outline-offset-4', conBarraLateral && 'lg:hidden')}>
             <Logo size="sm" />
           </Link>
+          {conBarraLateral && titulo && (
+            <p className="hidden lg:block text-lg font-bold tracking-tight text-foreground">{titulo}</p>
+          )}
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1" aria-label="Navegación principal">
+          <nav className={cn('hidden md:flex items-center gap-1', conBarraLateral && 'lg:hidden')} aria-label="Navegación principal">
             {navItems.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
@@ -68,7 +82,9 @@ export default function Header({ isAdmin, onAdminLogout }: HeaderProps) {
             {/* Campana de notificaciones (solo admin) */}
             <NotificacionesCampana isAdmin={!!isAdmin} />
 
-            {isAdmin ? (
+            {perfil && !isAdmin ? (
+              <MenuUsuario />
+            ) : isAdmin ? (
               <Button variant="ghost" size="sm" onClick={onAdminLogout} className="hidden md:inline-flex min-h-[44px]">
                 Cerrar sesión
               </Button>
@@ -122,6 +138,17 @@ export default function Header({ isAdmin, onAdminLogout }: HeaderProps) {
               >
                 Cerrar sesión
               </button>
+            ) : perfil ? (
+              <>
+                <Link href="/perfil" onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-fm text-sm font-semibold text-foreground hover:bg-muted transition-colors min-h-[44px]">
+                  <UserRound size={18} /> Mi perfil
+                </Link>
+                <button type="button" onClick={() => { setMobileOpen(false); void cerrarSesion().then(() => router.push('/login')) }}
+                  className="flex items-center gap-3 px-3 py-3 rounded-fm text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors w-full text-left min-h-[44px]">
+                  Cerrar sesión
+                </button>
+              </>
             ) : (
               <Link
                 href="/login"

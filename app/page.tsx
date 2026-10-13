@@ -3,14 +3,20 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format, isSameDay } from 'date-fns'
 import { CloudOff } from 'lucide-react'
+import { es } from 'date-fns/locale'
 import type { Activity, Hotel, OperationType, FilterState } from '@/types'
 import Header from '@/components/layout/Header'
 import CalendarGrid from '@/components/calendar/CalendarGrid'
 import DayPanel from '@/components/calendar/DayPanel'
 import CalendarFilters from '@/components/calendar/CalendarFilters'
-import AreaCalendarSection from '@/components/calendar/AreaCalendarSection'
 import Legend from '@/components/calendar/Legend'
 import { CalendarSkeleton } from '@/components/ui/Skeleton'
+import EmpleadoDelMesCalendario from '@/components/excelencia/EmpleadoDelMesCalendario'
+import BarraLateral from '@/components/layout/BarraLateral'
+import ResumenMes from '@/components/calendar/ResumenMes'
+import ProximosServicios from '@/components/calendar/ProximosServicios'
+import { capitalize } from '@/lib/utils'
+import { useEmpleadoDelMes } from '@/lib/excelencia/excelencia'
 import { guardarCache, leerCache } from '@/lib/offline/almacen'
 import { EVENTO_ACTIVIDAD_SINCRONIZADA, usuarioLocal } from '@/lib/offline/sincronizacion'
 
@@ -28,6 +34,10 @@ export default function CalendarPage() {
     hotel_id: null, operation_type_id: null, status: null, priority: null,
   })
   const [loading, setLoading] = useState(true)
+  // Mes que muestra el calendario: lo usa también el resumen del mes.
+  const [mesVisible, setMesVisible] = useState<Date>(new Date())
+  // Empleado del mes publicado: una sola consulta, se muestra según el ancho de pantalla.
+  const empleadoDelMes = useEmpleadoDelMes()
   // Si se muestra la copia guardada en el teléfono: fecha en que se guardó.
   const [copiaLocal, setCopiaLocal] = useState<string | null>(null)
   const [sinDatos, setSinDatos] = useState(false)
@@ -106,6 +116,15 @@ export default function CalendarPage() {
     return true
   })
 
+  // Actividades del mes mostrado (para el resumen)
+  const actividadesDelMes = filteredActivities.filter(act => act.date.startsWith(format(mesVisible, 'yyyy-MM')))
+  const nombreMesVisible = capitalize(format(mesVisible, 'MMMM yyyy', { locale: es }))
+
+  function elegirDia(fecha: Date) {
+    setMesVisible(fecha)
+    setSelectedDate(fecha)
+  }
+
   // Actividades del día seleccionado
   const dayActivities = selectedDate
     ? filteredActivities.filter(act => act.date === format(selectedDate, 'yyyy-MM-dd'))
@@ -116,96 +135,111 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <Header />
+    <div className="min-h-screen flex bg-background text-foreground">
+      {/* Menú lateral azul marino (solo PC) */}
+      <BarraLateral />
 
-      <main className="flex-1 fm-container py-6 w-full max-w-7xl mx-auto px-4 md:px-6">
-        {/* Título */}
-        <div className="mb-5">
-          <h1 className="text-xl md:text-2xl font-800 text-foreground leading-tight tracking-tight">
-            Calendario Operativo
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Trabajos programados de F&amp;M Fumigación en todos los hoteles
-          </p>
-        </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Header conBarraLateral titulo="Calendario operativo" />
 
-        {copiaLocal && (
-          <p role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-slate-300 bg-slate-100 p-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-            <CloudOff size={18} className="mt-0.5 shrink-0" />
-            <span>
-              <strong>Sin conexión.</strong> Mostrando el calendario guardado en este teléfono el {format(new Date(copiaLocal), 'dd/MM/yyyy')} a las {format(new Date(copiaLocal), 'HH:mm')}.
-              Puedes confirmar actividades: se enviarán al recuperar la conexión.
-            </span>
-          </p>
-        )}
-        {sinDatos && (
-          <p role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-            <CloudOff size={18} className="mt-0.5 shrink-0" />
-            <span>Sin conexión y sin un calendario guardado en este teléfono. Ábrelo con internet al menos una vez para poder consultarlo sin conexión.</span>
-          </p>
-        )}
+        <main className="flex-1 w-full px-4 py-5 md:px-6 lg:py-6 xl:px-8">
+          {/* Título (en PC el título va en el encabezado) */}
+          <div className="mb-4 lg:hidden">
+            <h1 className="text-xl font-800 text-foreground leading-tight tracking-tight">Calendario operativo</h1>
+            <p className="text-sm text-muted-foreground mt-1">Trabajos programados de F&amp;M Fumigación en todos los hoteles</p>
+          </div>
+          <p className="mb-4 hidden text-sm text-muted-foreground lg:block">Trabajos programados de F&amp;M Fumigación en todos los hoteles</p>
 
-        {/* Filtros */}
-        <div className="mb-4">
-          <CalendarFilters
-            hotels={hotels}
-            operationTypes={operationTypes}
-            filters={filters}
-            onChange={setFilters}
-          />
-        </div>
+          {/* Teléfono y tablet: empleado del mes debajo del título */}
+          <EmpleadoDelMesCalendario publicado={empleadoDelMes} className="mb-4 lg:hidden" />
 
-        {/* Layout principal: Calendario + Panel día (bottom sheet en móvil, columna lateral en PC) */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 items-start">
-          {/* Calendario */}
-          <div className="space-y-4">
-            {loading ? (
-              <CalendarSkeleton />
-            ) : (
-              <CalendarGrid
-                activities={filteredActivities}
-                selectedDate={selectedDate}
-                onDaySelect={date =>
-                  setSelectedDate(prev => (prev && isSameDay(prev, date)) ? null : date)
-                }
-              />
-            )}
-            {/* Leyenda */}
-            <Legend operationTypes={operationTypes} />
+          {copiaLocal && (
+            <p role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-slate-300 bg-slate-100 p-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+              <CloudOff size={18} className="mt-0.5 shrink-0" />
+              <span>
+                <strong>Sin conexión.</strong> Mostrando el calendario guardado en este teléfono el {format(new Date(copiaLocal), 'dd/MM/yyyy')} a las {format(new Date(copiaLocal), 'HH:mm')}.
+                Puedes confirmar actividades: se enviarán al recuperar la conexión.
+              </span>
+            </p>
+          )}
+          {sinDatos && (
+            <p role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              <CloudOff size={18} className="mt-0.5 shrink-0" />
+              <span>Sin conexión y sin un calendario guardado en este teléfono. Ábrelo con internet al menos una vez para poder consultarlo sin conexión.</span>
+            </p>
+          )}
+
+          {/* Filtros */}
+          <div className="mb-4">
+            <CalendarFilters
+              hotels={hotels}
+              operationTypes={operationTypes}
+              filters={filters}
+              onChange={setFilters}
+            />
           </div>
 
-          {/* Panel de día: bottom sheet en mobile (<lg) y sticky sidebar en PC (>=lg) */}
-          {selectedDate && (
-            <>
-              {/* Backdrop móvil */}
-              <div
-                className="fixed inset-0 bg-slate-950/65 backdrop-blur-xs z-40 lg:hidden fm-animate-fadein"
-                onClick={() => setSelectedDate(null)}
-                aria-hidden="true"
-              />
-              <div className="fixed inset-x-0 bottom-0 z-50 p-2 sm:p-4 lg:p-0 lg:static lg:z-auto lg:sticky lg:top-20">
-                <DayPanel
-                  date={selectedDate}
-                  activities={dayActivities}
-                  loading={loading}
-                  onClose={() => setSelectedDate(null)}
-                  onActivityUpdated={handleActivityUpdated}
+          {/* Resumen del mes mostrado (datos reales, con los filtros activos) */}
+          <div className="mb-4">
+            <ResumenMes actividades={actividadesDelMes} mes={nombreMesVisible} />
+          </div>
+
+          {/* Calendario + columna lateral (empleado del mes y panel del día) en PC */}
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-4 items-start">
+            <div className="min-w-0 space-y-4">
+              {loading ? (
+                <CalendarSkeleton />
+              ) : (
+                <CalendarGrid
+                  activities={filteredActivities}
+                  month={mesVisible}
+                  onMonthChange={setMesVisible}
+                  selectedDate={selectedDate}
+                  onDaySelect={date =>
+                    setSelectedDate(prev => (prev && isSameDay(prev, date)) ? null : date)
+                  }
                 />
+              )}
+              {/* Leyenda */}
+              <Legend operationTypes={operationTypes} />
+            </div>
+
+            <div className="space-y-4">
+              <EmpleadoDelMesCalendario publicado={empleadoDelMes} className="hidden lg:block" />
+
+              {/* Panel de día: hoja inferior en teléfono (<lg) y columna lateral en PC (>=lg) */}
+              {selectedDate ? (
+                <>
+                  {/* Backdrop móvil */}
+                  <div
+                    className="fixed inset-0 bg-slate-950/65 backdrop-blur-xs z-40 lg:hidden fm-animate-fadein"
+                    onClick={() => setSelectedDate(null)}
+                    aria-hidden="true"
+                  />
+                  <div className="fixed inset-x-0 bottom-0 z-50 p-2 sm:p-4 lg:p-0 lg:static lg:z-auto">
+                    <DayPanel
+                      date={selectedDate}
+                      activities={dayActivities}
+                      loading={loading}
+                      onClose={() => setSelectedDate(null)}
+                      onActivityUpdated={handleActivityUpdated}
+                    />
+                  </div>
+                </>
+              ) : null}
+
+              <div className="hidden lg:block">
+                <ProximosServicios actividades={filteredActivities} onElegirDia={elegirDia} />
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        </main>
 
-        <section className="mt-10 border-t border-border pt-6">
-          <AreaCalendarSection />
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="text-center py-5 text-xs text-muted-foreground border-t border-border mt-auto">
-        &copy; {new Date().getFullYear()} F&amp;M Fumigación &mdash; Sistema de gestión operativa
-      </footer>
+        {/* Footer (en PC está en el menú lateral) */}
+        <footer className="lg:hidden text-center py-5 text-xs text-muted-foreground border-t border-border mt-auto">
+          &copy; {new Date().getFullYear()} F&amp;M Fumigación &mdash; Sistema de gestión operativa
+        </footer>
+      </div>
     </div>
   )
 }

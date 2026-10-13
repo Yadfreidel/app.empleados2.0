@@ -7,6 +7,8 @@ interface LogoProps {
   showText?: boolean
   className?: string
   textColor?: string
+  /** Sobre fondo oscuro (menú azul marino): texto claro con buen contraste. */
+  oscuro?: boolean
 }
 
 const sizes = {
@@ -18,7 +20,7 @@ const sizes = {
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
-export default function Logo({ size = 'md', showText = true, className, textColor }: LogoProps) {
+export default function Logo({ size = 'md', showText = true, className, textColor, oscuro }: LogoProps) {
   const s = sizes[size] || sizes.md
 
   return (
@@ -44,7 +46,7 @@ export default function Logo({ size = 'md', showText = true, className, textColo
 
       {/* Brand Text */}
       {showText && (
-        <div style={{ color: textColor || 'var(--color-text)' }}>
+        <div style={{ color: textColor || (oscuro ? '#ffffff' : 'var(--color-text)') }}>
           <div
             style={{
               fontSize: s.fontSize,
@@ -61,7 +63,7 @@ export default function Logo({ size = 'md', showText = true, className, textColo
               fontWeight: 600,
               letterSpacing: '0.06em',
               textTransform: 'uppercase',
-              color: 'var(--fm-green-700)',
+              color: oscuro ? 'var(--fm-green-400)' : 'var(--fm-green-700)',
             }}
           >
             Fumigación

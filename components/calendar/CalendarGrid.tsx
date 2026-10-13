@@ -16,20 +16,28 @@ interface CalendarGridProps {
   onDaySelect: (date: Date) => void
   selectedDate: Date | null
   loading?: boolean
+  /** Mes mostrado, si lo controla la página (p. ej. para el resumen del mes). */
+  month?: Date
+  onMonthChange?: (month: Date) => void
 }
 
 const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const WEEKDAYS_LARGOS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
 export default function CalendarGrid({
   activities,
   onDaySelect,
   selectedDate,
+  month,
+  onMonthChange,
 }: CalendarGridProps) {
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
+  const [mesInterno, setMesInterno] = useState<Date>(new Date())
+  const currentMonth = month ?? mesInterno
+  const cambiarMes = useCallback((m: Date) => { setMesInterno(m); onMonthChange?.(m) }, [onMonthChange])
 
-  const prevMonth = useCallback(() => setCurrentMonth(m => subMonths(m, 1)), [])
-  const nextMonth = useCallback(() => setCurrentMonth(m => addMonths(m, 1)), [])
-  const goToday   = useCallback(() => setCurrentMonth(new Date()), [])
+  const prevMonth = useCallback(() => cambiarMes(subMonths(currentMonth, 1)), [cambiarMes, currentMonth])
+  const nextMonth = useCallback(() => cambiarMes(addMonths(currentMonth, 1)), [cambiarMes, currentMonth])
+  const goToday   = useCallback(() => cambiarMes(new Date()), [cambiarMes])
 
   // Build days grid (6 weeks)
   const monthStart = startOfMonth(currentMonth)
@@ -72,7 +80,7 @@ export default function CalendarGrid({
             <ChevronLeft size={18} />
           </Button>
           <h2
-            className="font-bold text-foreground text-sm sm:text-base md:text-lg min-w-[7.5rem] sm:min-w-[11rem] text-center capitalize select-none"
+            className="font-bold tracking-tight text-foreground text-sm sm:text-base md:text-lg min-w-[7.5rem] sm:min-w-[11rem] text-center capitalize select-none"
             aria-live="polite"
           >
             {capitalize(format(currentMonth, 'MMMM yyyy', { locale: es }))}
@@ -101,14 +109,15 @@ export default function CalendarGrid({
       </div>
 
       {/* ── Weekday labels ── */}
-      <div className="grid grid-cols-7 text-center border-b border-border py-2 px-1 sm:px-2 bg-muted/30">
-        {WEEKDAYS.map(day => (
+      <div className="grid grid-cols-7 text-center border-b border-border py-2.5 px-1 sm:px-2 bg-fm-navy-50/60 dark:bg-muted/30">
+        {WEEKDAYS.map((day, i) => (
           <div
             key={day}
             className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground select-none"
-            aria-label={day}
+            aria-label={WEEKDAYS_LARGOS[i]}
           >
-            {day}
+            <span className="xl:hidden">{day}</span>
+            <span className="hidden xl:inline normal-case text-[13px] tracking-normal text-foreground/70">{WEEKDAYS_LARGOS[i]}</span>
           </div>
         ))}
       </div>
@@ -134,14 +143,14 @@ export default function CalendarGrid({
               className={cn(
                 'relative flex flex-col items-center md:items-start justify-start p-1 sm:p-1.5 rounded-lg transition-all duration-150 border w-full min-w-0 select-none cursor-pointer',
                 // Mobile: square aspect ratio. Desktop: taller cells for short activity tags
-                'aspect-square md:aspect-auto md:min-h-[5.5rem] lg:min-h-[6.25rem]',
+                'aspect-square md:aspect-auto md:min-h-[5.5rem] lg:min-h-[6.5rem] xl:min-h-[7.25rem]',
                 isSelected
-                  ? 'border-fm-green-600 bg-fm-green-700 text-white shadow-md ring-2 ring-fm-green-500/60 dark:bg-fm-green-800'
+                  ? 'border-fm-navy-600 bg-fm-navy-100 text-foreground shadow-sm ring-2 ring-fm-navy-500/40 dark:bg-fm-navy-900 dark:text-white'
                   : dayIsToday
-                    ? 'border-fm-green-500 bg-fm-green-50/60 text-foreground ring-1 ring-fm-green-500 dark:bg-fm-green-950/40 dark:text-fm-green-300'
+                    ? 'border-fm-navy-400 bg-fm-navy-50 text-foreground ring-1 ring-fm-navy-400 dark:bg-fm-navy-950/60'
                     : hasActivities && isCurrentMonth
-                      ? 'border-border bg-card hover:border-fm-green-400 hover:bg-muted/60 text-foreground'
-                      : 'border-transparent bg-transparent hover:bg-muted/40 text-foreground',
+                      ? 'border-border bg-card hover:border-fm-navy-300 hover:shadow-sm text-foreground'
+                      : 'border-transparent bg-transparent hover:bg-muted/60 text-foreground',
                 !isCurrentMonth && 'opacity-30'
               )}
             >
@@ -150,10 +159,10 @@ export default function CalendarGrid({
                 <span
                   className={cn(
                     'w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold leading-none transition-colors mx-auto md:mx-0',
-                    isSelected
-                      ? 'text-white'
-                      : dayIsToday
-                        ? 'bg-fm-green-600 text-white font-bold'
+                    dayIsToday
+                      ? 'bg-fm-navy-700 text-white font-bold'
+                      : isSelected
+                        ? 'text-fm-navy-800 font-bold dark:text-white'
                         : isCurrentMonth
                           ? 'text-foreground'
                           : 'text-muted-foreground'
@@ -162,7 +171,7 @@ export default function CalendarGrid({
                   {format(day, 'd')}
                 </span>
                 {/* On PC, show total count if multiple */}
-                {hasActivities && !isSelected && (
+                {hasActivities && (
                   <span className="hidden md:inline-block text-[10px] font-semibold text-muted-foreground px-1">
                     {acts.length}
                   </span>
@@ -176,14 +185,14 @@ export default function CalendarGrid({
                     <span
                       key={dot.id}
                       className="fm-day-dot w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.9)' : dot.color }}
+                      style={{ backgroundColor: dot.color }}
                     />
                   ))}
                   {acts.length > 3 && (
                     <span
                       className={cn(
                         'text-[9px] font-bold leading-none ml-0.5',
-                        isSelected ? 'text-white' : 'text-muted-foreground'
+                        'text-muted-foreground'
                       )}
                     >
                       +{acts.length - 3}
@@ -195,34 +204,33 @@ export default function CalendarGrid({
               {/* PC: short activity labels */}
               {hasActivities && (
                 <div className="hidden md:flex flex-col gap-1 w-full mt-1.5 px-0.5" aria-hidden="true">
-                  {acts.slice(0, 2).map(act => {
+                  {acts.slice(0, 3).map((act, i) => {
                     const color = act.color_override || act.operation_type?.color || '#16a34a'
                     return (
                       <div
                         key={act.id}
                         className={cn(
-                          'w-full truncate text-[11px] font-medium px-1.5 py-0.5 rounded leading-tight text-left',
-                          isSelected
-                            ? 'bg-white/20 text-white'
-                            : 'bg-muted/80 text-foreground dark:bg-muted/40'
+                          'w-full truncate text-[11px] font-medium px-1.5 py-1 rounded-md leading-tight text-left text-foreground',
+                          // La tercera solo cabe en pantallas grandes.
+                          i === 2 && 'hidden xl:block'
                         )}
-                        style={!isSelected ? { borderLeft: `2.5px solid ${color}` } : undefined}
+                        // Fondo suave del color del tipo de operación, con borde del color pleno.
+                        style={{ borderLeft: `3px solid ${color}`, background: /^#[0-9a-f]{6}$/i.test(color) ? `${color}1a` : undefined }}
                         title={`${act.title}${act.hotel ? ` · ${act.hotel.name}` : ''}`}
                       >
-                        <span className="truncate block">
-                          {act.hotel?.name ? `${act.hotel.name}: ` : ''}{act.title}
-                        </span>
+                        <span className="block font-semibold whitespace-normal hyphens-auto break-words line-clamp-2">{act.title}</span>
+                        {act.hotel?.name && <span className="truncate block text-[10px] text-muted-foreground">{act.hotel.name}</span>}
                       </div>
                     )
                   })}
                   {acts.length > 2 && (
-                    <span
-                      className={cn(
-                        'text-[10px] font-semibold pl-1 text-left',
-                        isSelected ? 'text-white/90' : 'text-muted-foreground'
-                      )}
-                    >
+                    <span className="text-[10px] font-semibold pl-1 text-left text-muted-foreground xl:hidden">
                       +{acts.length - 2} más
+                    </span>
+                  )}
+                  {acts.length > 3 && (
+                    <span className="hidden xl:block text-[10px] font-semibold pl-1 text-left text-muted-foreground">
+                      +{acts.length - 3} más
                     </span>
                   )}
                 </div>

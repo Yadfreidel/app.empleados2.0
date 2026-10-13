@@ -10,6 +10,8 @@ export interface Profile {
   name: string | null
   active: boolean
   created_at: string
+  /** Migración 015: foto de perfil en el bucket privado 'avatares'. */
+  avatar_path?: string | null
 }
 
 export interface Hotel {
@@ -58,6 +60,12 @@ export interface Activity {
   confirmado_nombre?: string | null
   confirmado_en?: string | null
   confirmacion_nota?: string | null
+  /** Migración 014: supervisor responsable, validación y bloqueo justificado. */
+  supervisor_id?: string | null
+  validado_en?: string | null
+  calidad_validada?: number | null
+  bloqueo_motivo?: string | null
+  bloqueo_aprobado_en?: string | null
   // Joins
   hotel?: Hotel
   operation_type?: OperationType
@@ -216,6 +224,8 @@ export type ActivityFormData = {
   color_override: string
   published: boolean
   notes: string
+  /** Migración 014: supervisor responsable ('' = sin asignar). */
+  supervisor_id?: string
 }
 
 export type HotelFormData = {

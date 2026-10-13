@@ -20,7 +20,7 @@ const variantStyles: Record<Variant, string> = {
   secondary: 'fm-btn-secondary',
   ghost:     'fm-btn-ghost',
   danger:    'fm-btn-danger',
-  outline:   'fm-btn-secondary border-fm-green-300 text-fm-green-800 hover:bg-fm-green-50',
+  outline:   'fm-btn-secondary border-fm-green-300 text-fm-green-800 hover:bg-fm-green-50 dark:border-fm-green-800 dark:text-fm-green-300 dark:hover:bg-fm-green-950',
 }
 
 const sizeStyles: Record<Size, string> = {

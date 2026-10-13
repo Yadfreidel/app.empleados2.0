@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Activity, Plus, Pencil, Trash2, Search, Eye, EyeOff, Clock, Building2, MessagesSquare } from 'lucide-react'
+import { Activity, Plus, Pencil, Trash2, Search, Eye, EyeOff, Clock, Building2, MessagesSquare, ShieldCheck, Ban, UserRound } from 'lucide-react'
 import type { Activity as ActivityType, ActivityFormData, Hotel, OperationType } from '@/types'
 import Button from '@/components/ui/Button'
 import Modal, { ConfirmModal } from '@/components/ui/Modal'
@@ -11,6 +11,7 @@ import ChatActividad from '@/components/chat/ChatActividad'
 import { Skeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
 import LogoHotel from '@/components/hoteles/LogoHotel'
+import EvaluacionOperativo from '@/components/excelencia/EvaluacionOperativo'
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge'
 import { activitySchema } from '@/lib/validations'
 import { formatDate, formatTime, STATUS_LABELS, PRIORITY_LABELS, formatSupabaseError } from '@/lib/utils'
@@ -22,14 +23,18 @@ const EMPTY_FORM: ActivityFormData = {
   status: 'programado', priority: 'normal', color_override: '', published: true, notes: '',
 }
 
+interface Supervisor { id: string; nombre: string }
+
 function ActivityForm({
-  value, onChange, error, hotels, opTypes,
+  value, onChange, error, hotels, opTypes, supervisores,
 }: {
   value: ActivityFormData
   onChange: (v: ActivityFormData) => void
   error?: string | null
   hotels: Hotel[]
   opTypes: OperationType[]
+  /** null = la migración 014 no está instalada (no se muestra el campo). */
+  supervisores: Supervisor[] | null
 }) {
   const set = (key: keyof ActivityFormData) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -84,6 +89,16 @@ function ActivityForm({
           <input type="time" className="fm-input" value={value.end_time} onChange={set('end_time')} />
         </div>
       </div>
+      {supervisores && (
+        <div>
+          <label className="fm-label">Supervisor responsable</label>
+          <select className="fm-input" value={value.supervisor_id ?? ''} onChange={set('supervisor_id')}>
+            <option value="">Sin asignar</option>
+            {supervisores.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">Cuenta para la Excelencia del mes de ese supervisor.</p>
+        </div>
+      )}
       {/* 1 col en celular, 2 en PC */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
@@ -126,6 +141,29 @@ function ActivityForm({
   )
 }
 
+/** Supervisor, validación y bloqueo de un operativo (Excelencia del mes). */
+function InsigniasEvaluacion({ a, supervisores }: { a: ActivityType; supervisores: Supervisor[] | null }) {
+  if (!supervisores) return null
+  const sup = supervisores.find(s => s.id === a.supervisor_id)
+  return (
+    <span className="flex flex-wrap items-center gap-1 text-[10px] font-semibold">
+      {sup && (
+        <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-muted-foreground"><UserRound size={10} /> {sup.nombre}</span>
+      )}
+      {a.validado_en && (
+        <span className="inline-flex items-center gap-0.5 rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+          <ShieldCheck size={10} /> Validado{a.calidad_validada ? ` ★${a.calidad_validada}` : ''}
+        </span>
+      )}
+      {a.bloqueo_aprobado_en && (
+        <span className="inline-flex items-center gap-0.5 rounded bg-slate-200 px-1.5 py-0.5 text-slate-700 dark:bg-slate-800 dark:text-slate-300" title={a.bloqueo_motivo ?? ''}>
+          <Ban size={10} /> Bloqueo
+        </span>
+      )}
+    </span>
+  )
+}
+
 export default function ActividadesPage() {
   return <Suspense fallback={<Skeleton className="h-40 rounded-xl" />}><ActividadesContent /></Suspense>
 }
@@ -147,6 +185,8 @@ function ActividadesContent() {
   const [deleteTarget, setDeleteTarget] = useState<ActivityType | null>(null)
   const [deleting, setDeleting]     = useState(false)
   const [chatTarget, setChatTarget] = useState<ActivityType | null>(null)
+  const [evaluando, setEvaluando] = useState<ActivityType | null>(null)
+  const [supervisores, setSupervisores] = useState<Supervisor[] | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -161,6 +201,14 @@ function ActividadesContent() {
       setActivities((acts as ActivityType[]) ?? [])
       setHotels(hots ?? [])
       setOpTypes(ops ?? [])
+      // Excelencia del mes (migración 014): solo si la columna existe.
+      const { error: sinColumna } = await supabase.from('activities').select('supervisor_id').limit(1)
+      if (!sinColumna) {
+        const { data: usuarios } = await supabase.rpc('admin_listar_usuarios')
+        setSupervisores(((usuarios ?? []) as { id: string; name: string | null; email: string; role: string; active: boolean }[])
+          .filter(u => u.role === 'consulta' && u.active)
+          .map(u => ({ id: u.id, nombre: u.name?.trim() || u.email })))
+      }
     } catch (e) { console.error(e) } finally { setLoading(false) }
   }, [])
 
@@ -181,6 +229,7 @@ function ActividadesContent() {
       hotel_id: a.hotel_id, operation_type_id: a.operation_type_id,
       status: a.status, priority: a.priority,
       color_override: a.color_override ?? '', published: a.published, notes: a.notes ?? '',
+      supervisor_id: a.supervisor_id ?? '',
     })
     setFormErr(null)
     setModalOpen(true)
@@ -206,6 +255,8 @@ function ActividadesContent() {
         color_override:    result.data.color_override || null,
         published:         result.data.published,
         notes:             result.data.notes || null,
+        // Solo se envía si la migración 014 está instalada.
+        ...(supervisores ? { supervisor_id: form.supervisor_id || null } : {}),
       }
       if (editing) {
         const { error } = await supabase.from('activities').update(payload).eq('id', editing.id)
@@ -355,8 +406,15 @@ function ActividadesContent() {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <StatusBadge status={a.status} />
                       <PriorityBadge priority={a.priority} />
+                      <InsigniasEvaluacion a={a} supervisores={supervisores} />
                     </div>
                     <div className="flex items-center gap-1">
+                      {supervisores && (
+                        <Button variant="ghost" size="icon" className="min-w-[40px] min-h-[40px] text-muted-foreground hover:text-foreground"
+                          onClick={() => setEvaluando(a)} aria-label="Evaluación (validar o bloqueo)">
+                          <ShieldCheck size={15} />
+                        </Button>
+                      )}
                       <Button
                         id={`btn-chat-act-mobile-${a.id}`}
                         variant="ghost"
@@ -453,13 +511,22 @@ function ActividadesContent() {
                           {a.start_time && <div className="text-foreground/75 font-medium">{formatTime(a.start_time)}</div>}
                         </td>
                         <td className="px-5 py-4">
-                          <StatusBadge status={a.status} />
+                          <div className="flex flex-col items-start gap-1">
+                            <StatusBadge status={a.status} />
+                            <InsigniasEvaluacion a={a} supervisores={supervisores} />
+                          </div>
                         </td>
                         <td className="px-5 py-4">
                           <PriorityBadge priority={a.priority} />
                         </td>
                         <td className="px-5 py-4 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            {supervisores && (
+                              <Button variant="ghost" size="icon" className="min-w-[40px] min-h-[40px] text-muted-foreground hover:text-foreground"
+                                onClick={() => setEvaluando(a)} aria-label="Evaluación (validar o bloqueo)" title="Evaluación (validar o bloqueo)">
+                                <ShieldCheck size={15} />
+                              </Button>
+                            )}
                             <Button
                               id={`btn-chat-act-${a.id}`}
                               variant="ghost"
@@ -529,8 +596,13 @@ function ActividadesContent() {
           </>
         }
       >
-        <ActivityForm value={form} onChange={setForm} error={formErr} hotels={hotels} opTypes={opTypes} />
+        <ActivityForm value={form} onChange={setForm} error={formErr} hotels={hotels} opTypes={opTypes} supervisores={supervisores} />
       </Modal>
+
+      {evaluando && (
+        <EvaluacionOperativo actividad={evaluando} onClose={() => setEvaluando(null)} onCambio={() => void load()}
+          supervisorNombre={supervisores?.find(s => s.id === evaluando.supervisor_id)?.nombre ?? null} />
+      )}
 
       <ConfirmModal
         open={!!deleteTarget}

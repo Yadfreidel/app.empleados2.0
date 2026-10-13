@@ -44,6 +44,19 @@
   --color-fm-blue-800:  #075985;
   --color-fm-blue-900:  #0c4a6e;
   --color-fm-blue-950:  #082f49;
+
+  /* Azul marino corporativo (menús laterales y selección) */
+  --color-fm-navy-50:   #f1f5fb;
+  --color-fm-navy-100:  #e2eaf5;
+  --color-fm-navy-200:  #c3d3ea;
+  --color-fm-navy-300:  #93afd6;
+  --color-fm-navy-400:  #5f86bd;
+  --color-fm-navy-500:  #3b67a5;
+  --color-fm-navy-600:  #2a5189;
+  --color-fm-navy-700:  #1f3f6e;
+  --color-fm-navy-800:  #163056;
+  --color-fm-navy-900:  #0f2442;
+  --color-fm-navy-950:  #0a1930;
 }
 
 /* ─── F&M Fumigación — Design System & Tokens ─────────────────────────────── */
@@ -72,7 +85,8 @@
   --fm-blue-950:  #082f49;
 
   /* Semantic UI Tokens (Light Theme) */
-  --background:        #ffffff;
+  /* Fondo gris azulado muy claro: las tarjetas blancas resaltan sin bordes fuertes. */
+  --background:        #f4f6fa;
   --foreground:        #0f172a; /* slate-900 */
   --card:              #ffffff;
   --card-foreground:   #0f172a;
@@ -211,6 +225,9 @@ body {
 }
 
 /* ─── Utility Classes ────────────────────────────────────────────── */
+/* En la capa 'components' para que las utilidades de Tailwind (hidden, md:hidden,
+   colores…) puedan sobrescribirlas, como corresponde. */
+@layer components {
 
 .fm-card {
   background: var(--card);
@@ -357,6 +374,7 @@ body {
   border-top: 1px solid var(--border);
   margin: 0;
 }
+}
 
 /* ─── Animation ──────────────────────────────────────────────────── */
 
@@ -387,6 +405,17 @@ body {
   animation: fm-shimmer 1.4s ease infinite;
   border-radius: var(--radius);
 }
+
+/* ─── Menú lateral azul marino ───────────────────────────────────── */
+.fm-sidebar {
+  background: var(--color-fm-navy-900);
+  color: #e2e8f0;
+  border-color: rgb(255 255 255 / 0.08);
+}
+.dark .fm-sidebar { background: #0b1730; }
+/* Botones de icono (tema, notificaciones, cerrar) legibles sobre el azul. */
+.fm-sidebar .fm-btn-ghost { color: #cbd5e1; }
+.fm-sidebar .fm-btn-ghost:hover { background: rgb(255 255 255 / 0.08); color: #ffffff; }
 
 /* ─── Calendar specific ──────────────────────────────────────────── */
 .fm-day-dot {
