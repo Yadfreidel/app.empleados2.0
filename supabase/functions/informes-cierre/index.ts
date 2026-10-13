@@ -45,6 +45,9 @@ interface Informe {
   acciones: string
   resultado: string
   observaciones: string | null
+  productos?: string | null
+  recomendaciones?: string | null
+  pendientes?: string | null
   fotos: FotoInforme[]
   tecnico_id: string | null
   tecnico_nombre: string
@@ -136,6 +139,7 @@ async function analizar(db: SupabaseClient, inf: Informe) {
     titulo: inf.actividad_titulo, fechaProgramada: inf.fecha_programada, servicio: inf.servicio,
     hallazgos: inf.hallazgos, acciones: inf.acciones, resultado: inf.resultado,
     observaciones: inf.observaciones, tecnico: inf.tecnico_nombre,
+    productos: inf.productos, recomendaciones: inf.recomendaciones, pendientes: inf.pendientes,
   }
   const { analisis, modelo } = await analizarCierre({ apiKey, modelo: MODELO, datos, fotos })
   const motivos = motivosDeRevision(inf, analisis, legibles)

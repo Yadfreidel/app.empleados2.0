@@ -79,6 +79,8 @@ app.empleados/
    - [`supabase/migrations/008_sincronizacion_offline.sql`](supabase/migrations/008_sincronizacion_offline.sql) (confirmaciones sin conexión: idempotencia y conflictos)
    - [`supabase/migrations/009_informes_cierre.sql`](supabase/migrations/009_informes_cierre.sql) (informes de cierre de operativos)
    - [`supabase/migrations/010_informes_descarga_local.sql`](supabase/migrations/010_informes_descarga_local.sql) (PDF descargable en el equipo y revisión del supervisor, sin correo)
+   - [`supabase/migrations/011_cierre_simplificado.sql`](supabase/migrations/011_cierre_simplificado.sql) (cierre con descripción + 2 fotos)
+   - [`supabase/migrations/012_cierre_por_voz.sql`](supabase/migrations/012_cierre_por_voz.sql) (dictar reporte: dictados, productos/recomendaciones/pendientes)
    - Opcional: Edge Function `informes-cierre` para el análisis con IA: ver [`supabase/functions/README.md`](supabase/functions/README.md)
    - Despliega la Edge Function `admin-usuarios` para crear y editar usuarios desde el panel: ver [`supabase/functions/README.md`](supabase/functions/README.md)
 3. Copia el archivo `.env.local.example` a `.env.local`:
@@ -140,3 +142,17 @@ La app necesita servidor (Server Actions, `proxy.ts` y rutas dinámicas), por es
 | Notificaciones en Tiempo Real | ✅ Completado | Hook `useNotificaciones`, Realtime listener y componente `NotificacionesCampana` |
 | Build de Producción | ✅ Verificado | `npm run build` compila al 100% sin errores de tipos |
 
+## Dictar reporte (cierre por voz)
+
+En el cierre de servicio, **Dictar reporte** graba un audio (grabar, detener, escuchar, eliminar,
+volver a grabar), lo envía a `POST /api/dictado`, lo transcribe y separa área, hallazgos, trabajo
+realizado, productos, recomendaciones y pendientes. Los datos se pasan al formulario para que el
+técnico los revise y marque «Revisé y confirmo»; el servicio solo se cierra con el botón de cierre
+(mismas validaciones y fotos obligatorias). Lo no mencionado queda vacío.
+
+- Requiere la migración `012_cierre_por_voz.sql` y **https** (el micrófono no funciona por `http://IP`).
+- Variables (solo servidor, en Vercel → Settings → Environment Variables): ver `.env.local.example`.
+  Obligatoria `TRANSCRIPCION_API_KEY`; recomendada `ANTHROPIC_API_KEY` para separar los campos.
+- Límites: formatos de audio comunes (webm, ogg, mp4/m4a, mp3, wav, aac), 4 MB y 180 s por defecto.
+- El audio se procesa en memoria y no se guarda, salvo `DICTADO_CONSERVAR_AUDIO=true`.
+- Cada grabación tiene un id: si se reenvía, no se transcribe ni se cobra dos veces.

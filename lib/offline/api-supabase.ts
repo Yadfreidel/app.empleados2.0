@@ -62,7 +62,7 @@ export function crearApiSupabase(usuarioId: string): ApiSincronizacion {
   async function cerrarConInforme(c: ConfirmacionPendiente): ReturnType<ApiSincronizacion['confirmar']> {
     const informe = c.informe!
     try {
-      const { data, error, status } = await supabase.rpc('cerrar_operativo_con_informe', {
+      const base = {
         p_informe_id: c.id,
         p_actividad_id: c.actividadId,
         p_area: informe.area,
@@ -75,7 +75,18 @@ export function crearApiSupabase(usuarioId: string): ApiSincronizacion {
         p_version_esperada: c.versionEsperada,
         p_forzar: c.forzar,
         p_creado_en_dispositivo: c.creadaEn,
+      }
+      // v2 (migración 012) guarda además productos, recomendaciones, pendientes y el dictado.
+      let { data, error, status } = await supabase.rpc('cerrar_operativo_con_informe_v2', {
+        ...base,
+        p_productos: informe.productos || null,
+        p_recomendaciones: informe.recomendaciones || null,
+        p_pendientes: informe.pendientes || null,
+        p_dictado_id: informe.dictadoId ?? null,
       })
+      if (error && (error.code === 'PGRST202' || error.code === '42883')) {
+        ({ data, error, status } = await supabase.rpc('cerrar_operativo_con_informe', base))
+      }
       if (error) {
         if (error.code === 'PGRST202' || error.code === '42883') {
           // Nunca se confirma sin el informe: se espera a que el administrador instale la migración.

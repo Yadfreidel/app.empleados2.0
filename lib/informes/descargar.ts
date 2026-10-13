@@ -11,15 +11,19 @@ function lineas(texto: string) {
   return texto.split(/\r?\n|;\s*/).map(l => l.replace(/^[-•*\d.)\s]+/, '').trim()).filter(Boolean).slice(0, 20)
 }
 
-/** Contenido del informe sin IA: solo lo escrito por el técnico. */
+const unicos = (lista: string[]) => [...new Map(lista.map(x => [x.toLowerCase(), x])).values()]
+
+/** Contenido del informe sin IA: solo lo escrito (o dictado y confirmado) por el técnico. */
 export function analisisLocal(i: InformeCierre): AnalisisInforme {
+  const pendientesTecnico = lineas(i.pendientes ?? '')
   return {
     resumen: `Se realizó el servicio "${i.servicio}" en ${i.area} del ${i.hotel_nombre}. El contenido de este informe corresponde a lo registrado por el técnico.`,
     hallazgos: lineas(i.hallazgos),
     acciones: lineas(i.acciones),
     fotos: i.fotos.map((_, n) => ({ indice: n + 1, descripcion: '', corresponde_a_categoria: true, observacion: '' })),
-    recomendaciones: [],
-    pendientes: i.resultado === 'requiere_seguimiento' ? ['Seguimiento solicitado por el técnico.'] : [],
+    recomendaciones: lineas(i.recomendaciones ?? ''),
+    pendientes: pendientesTecnico.length > 0 ? pendientesTecnico
+      : i.resultado === 'requiere_seguimiento' ? ['Seguimiento solicitado por el técnico.'] : [],
     conclusion_servicio: 'Servicio realizado según lo registrado por el técnico.',
     estado_problema: i.resultado === 'problema_resuelto' ? 'resuelto_segun_tecnico'
       : i.resultado === 'requiere_seguimiento' ? 'pendiente_seguimiento' : 'no_determinable',
@@ -39,6 +43,22 @@ async function bytesDe(url: string) {
   const r = await fetch(url)
   if (!r.ok) throw new Error(String(r.status))
   return new Uint8Array(await r.arrayBuffer())
+}
+
+/**
+ * Análisis de la IA o contenido ajustado por el supervisor; si no hay, solo lo
+ * del técnico. Las recomendaciones y pendientes que confirmó el técnico siempre
+ * se incluyen (la IA no los reemplaza).
+ */
+function contenido(i: InformeCierre): AnalisisInforme {
+  const local = analisisLocal(i)
+  if (!i.analisis) return local
+  if (i.analisis.editado_por_supervisor) return i.analisis
+  return {
+    ...i.analisis,
+    recomendaciones: unicos([...lineas(i.recomendaciones ?? ''), ...i.analisis.recomendaciones]),
+    pendientes: unicos([...lineas(i.pendientes ?? ''), ...i.analisis.pendientes]),
+  }
 }
 
 /** Descarga el PDF del informe en este equipo. */
@@ -76,8 +96,8 @@ export async function descargarInformePdf(i: InformeCierre) {
     observaciones: i.observaciones,
     tecnico: i.tecnico_nombre,
     cerradoEn: i.cerrado_en,
-    // Análisis de la IA o contenido ajustado por el supervisor; si no hay, solo lo del técnico.
-    analisis: i.analisis ?? analisisLocal(i),
+    analisis: contenido(i),
+    productos: i.productos ?? null,
     fotos,
     revision: i.revisado_en && i.revisado_nombre ? { nombre: i.revisado_nombre, fecha: i.revisado_en, nota: i.revision_nota } : null,
     empresa: 'F&M Fumigación',

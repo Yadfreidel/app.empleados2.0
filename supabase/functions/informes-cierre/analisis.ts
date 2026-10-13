@@ -40,6 +40,10 @@ export interface DatosCierre {
   resultado: string
   observaciones: string | null
   tecnico: string
+  /** Confirmados por el técnico (migración 012). */
+  productos?: string | null
+  recomendaciones?: string | null
+  pendientes?: string | null
 }
 
 export type EstadoProblema = 'resuelto_segun_tecnico' | 'pendiente_seguimiento' | 'no_aplica' | 'no_determinable'
@@ -148,6 +152,9 @@ Hallazgos: ${escapar(datos.hallazgos)}
 Acciones realizadas: ${escapar(datos.acciones)}
 Resultado declarado por el técnico: ${ETIQUETA_RESULTADO[datos.resultado] ?? datos.resultado}
 Observaciones: ${datos.observaciones ? escapar(datos.observaciones) : '(ninguna)'}
+Productos mencionados por el técnico: ${datos.productos ? escapar(datos.productos) : '(ninguno)'}
+Recomendaciones del técnico: ${datos.recomendaciones ? escapar(datos.recomendaciones) : '(ninguna)'}
+Pendientes del técnico: ${datos.pendientes ? escapar(datos.pendientes) : '(ninguno)'}
 </datos_del_tecnico>
 
 A continuación, ${fotos.length} fotos con su índice y categoría.`,

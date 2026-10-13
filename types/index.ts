@@ -133,6 +133,11 @@ export interface InformeCierre {
   acciones: string
   resultado: ResultadoCierre
   observaciones: string | null
+  /** Migración 012: datos confirmados por el técnico (escritos o dictados). */
+  productos?: string | null
+  recomendaciones?: string | null
+  pendientes?: string | null
+  dictado_id?: string | null
   fotos: { path: string; categoria: CategoriaFotoInforme; nombre: string; tipo: string; tamano: number }[]
   tecnico_id: string | null
   tecnico_nombre: string

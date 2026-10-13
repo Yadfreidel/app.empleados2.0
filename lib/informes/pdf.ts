@@ -34,6 +34,8 @@ export interface DatosPdf {
   servicio: string
   resultado: string
   observaciones: string | null
+  /** Productos que el técnico mencionó (no se infieren de las fotos). */
+  productos?: string | null
   tecnico: string
   cerradoEn: string // ISO
   analisis: AnalisisInforme
@@ -266,6 +268,12 @@ export async function generarPdf(d: DatosPdf): Promise<Uint8Array> {
 
   l.titulo('Acciones realizadas')
   l.vinetas(a.acciones, 'Sin acciones registradas.')
+
+  const productos = (d.productos ?? '').split(/\r?\n|,\s*/).map(p => p.trim()).filter(Boolean)
+  if (productos.length > 0) {
+    l.titulo('Productos mencionados por el técnico')
+    l.vinetas(productos, '')
+  }
 
   // ── Registro fotográfico ────────────────────────────────────────────
   const gap = 14

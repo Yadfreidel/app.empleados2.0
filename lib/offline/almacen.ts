@@ -35,6 +35,11 @@ export interface InformePendiente {
   hallazgos: string
   acciones: string
   resultado: ResultadoCierre
+  /** Migración 012 (opcionales): datos confirmados por el técnico, también si vienen del dictado. */
+  productos?: string
+  recomendaciones?: string
+  pendientes?: string
+  dictadoId?: string | null
   /** El servidor ya lo registró y se pidió generarlo (evita volver a pedirlo). */
   generacionSolicitada: boolean
   numero: string | null
