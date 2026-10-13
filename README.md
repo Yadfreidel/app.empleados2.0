@@ -76,6 +76,10 @@ app.empleados/
    - [`supabase/migrations/20261005165015_actividad_notificaciones_admin.sql`](supabase/migrations/20261005165015_actividad_notificaciones_admin.sql) (confirmación segura de actividades con notificación al administrador)
    - [`supabase/migrations/006_chat_actividades.sql`](supabase/migrations/006_chat_actividades.sql) (chat por actividad con fotos y PDFs; bucket privado `actividad-adjuntos`)
    - [`supabase/migrations/007_configuracion_y_usuarios.sql`](supabase/migrations/007_configuracion_y_usuarios.sql) (Configuración del panel admin y listado de usuarios)
+   - [`supabase/migrations/008_sincronizacion_offline.sql`](supabase/migrations/008_sincronizacion_offline.sql) (confirmaciones sin conexión: idempotencia y conflictos)
+   - [`supabase/migrations/009_informes_cierre.sql`](supabase/migrations/009_informes_cierre.sql) (informes de cierre de operativos)
+   - [`supabase/migrations/010_informes_descarga_local.sql`](supabase/migrations/010_informes_descarga_local.sql) (PDF descargable en el equipo y revisión del supervisor, sin correo)
+   - Opcional: Edge Function `informes-cierre` para el análisis con IA: ver [`supabase/functions/README.md`](supabase/functions/README.md)
    - Despliega la Edge Function `admin-usuarios` para crear y editar usuarios desde el panel: ver [`supabase/functions/README.md`](supabase/functions/README.md)
 3. Copia el archivo `.env.local.example` a `.env.local`:
    ```bash

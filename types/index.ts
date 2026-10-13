@@ -50,6 +50,8 @@ export interface Activity {
   published: boolean
   notes: string | null
   created_at: string
+  /** Cambia en cada edición; se usa para detectar conflictos al sincronizar. */
+  updated_at?: string
   confirmado_por?: string | null
   confirmado_nombre?: string | null
   confirmado_en?: string | null
@@ -91,6 +93,78 @@ export interface ActividadMensaje {
   adjunto_nombre: string | null
   adjunto_tamano: number | null
   es_evidencia: boolean
+  created_at: string
+}
+
+export type CategoriaFotoInforme = 'area' | 'hallazgo' | 'trabajo' | 'estado_final' | 'adicional'
+export type ResultadoCierre = 'servicio_realizado' | 'problema_resuelto' | 'requiere_seguimiento'
+export type EstadoGeneracionInforme = 'pendiente' | 'generando' | 'generado' | 'error'
+export type EstadoEnvioInforme = 'pendiente' | 'requiere_revision' | 'enviando' | 'enviado' | 'error' | 'sin_destinatarios' | 'no_enviar'
+
+export interface AnalisisInforme {
+  resumen: string
+  hallazgos: string[]
+  acciones: string[]
+  fotos: { indice: number; descripcion: string; corresponde_a_categoria: boolean; observacion: string }[]
+  recomendaciones: string[]
+  pendientes: string[]
+  conclusion_servicio: string
+  estado_problema: 'resuelto_segun_tecnico' | 'pendiente_seguimiento' | 'no_aplica' | 'no_determinable'
+  conclusion_problema: string
+  evidencia_suficiente: boolean
+  contradicciones: string[]
+  motivos_revision: string[]
+  ia_disponible: boolean
+  editado_por_supervisor?: boolean
+}
+
+export interface InformeCierre {
+  id: string
+  numero: string
+  actividad_id: string
+  hotel_id: string
+  hotel_nombre: string
+  operacion_nombre: string | null
+  actividad_titulo: string
+  fecha_programada: string
+  area: string
+  servicio: string
+  hallazgos: string
+  acciones: string
+  resultado: ResultadoCierre
+  observaciones: string | null
+  fotos: { path: string; categoria: CategoriaFotoInforme; nombre: string; tipo: string; tamano: number }[]
+  tecnico_id: string | null
+  tecnico_nombre: string
+  cerrado_en: string
+  estado_generacion: EstadoGeneracionInforme
+  analisis: AnalisisInforme | null
+  modelo_ia: string | null
+  pdf_path: string | null
+  pdf_tamano: number | null
+  generado_en: string | null
+  requiere_revision: boolean
+  motivos_revision: string[]
+  revisado_nombre: string | null
+  revisado_en: string | null
+  revision_nota: string | null
+  estado_envio: EstadoEnvioInforme
+  enviado_a: string[] | null
+  enviado_en: string | null
+  intentos_generacion: number
+  intentos_envio: number
+  ultimo_error: string | null
+  proximo_intento: string
+  created_at: string
+  updated_at: string
+}
+
+export interface InformeEvento {
+  id: number
+  informe_id: string
+  tipo: 'creado' | 'generacion' | 'revision' | 'envio' | 'error' | 'reintento' | 'aprobado' | 'no_enviar'
+  mensaje: string
+  detalle: Record<string, unknown> | null
   created_at: string
 }
 

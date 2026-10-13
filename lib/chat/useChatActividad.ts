@@ -58,6 +58,16 @@ export async function publicarAdjuntos(
   return (data ?? []) as ActividadMensaje[]
 }
 
+const CLAVE_CHAT_DISPONIBLE = 'fm-chat-disponible'
+const esErrorDeRed = (error: { message?: string }) =>
+  /Failed to fetch|NetworkError|Load failed|fetch failed/i.test(error.message ?? '') || (typeof navigator !== 'undefined' && !navigator.onLine)
+function leerChatDisponible() {
+  try { return localStorage.getItem(CLAVE_CHAT_DISPONIBLE) === '1' } catch { return false }
+}
+function guardarChatDisponible(disponible: boolean) {
+  try { localStorage.setItem(CLAVE_CHAT_DISPONIBLE, disponible ? '1' : '0') } catch { /* sin almacenamiento */ }
+}
+
 /** Resumen ligero para mostrar el contador en la tarjeta sin abrir el chat. */
 export function useResumenChat(actividadId: string, habilitado: boolean) {
   // Oculto hasta comprobar que la migración del chat está instalada.
@@ -70,11 +80,19 @@ export function useResumenChat(actividadId: string, habilitado: boolean) {
     const total = await supabase.from('actividad_mensajes')
       .select('id', { count: 'exact', head: true })
       .eq('actividad_id', actividadId)
-    // Sin sesión la consulta se rechaza por permisos, pero sí indica si el chat existe.
-    if (total.error || !session) {
-      setResumen({ total: 0, nuevos: 0, disponible: !esChatNoInstalado(total.error) })
+    // Sin red no se puede saber: se usa lo último comprobado (permite adjuntar fotos sin conexión).
+    if (total.error && esErrorDeRed(total.error)) {
+      setResumen({ total: 0, nuevos: 0, disponible: leerChatDisponible() })
       return
     }
+    // Sin sesión la consulta se rechaza por permisos, pero sí indica si el chat existe.
+    if (total.error || !session) {
+      const disponible = !esChatNoInstalado(total.error)
+      guardarChatDisponible(disponible)
+      setResumen({ total: 0, nuevos: 0, disponible })
+      return
+    }
+    guardarChatDisponible(true)
     let nuevosQuery = supabase.from('actividad_mensajes')
       .select('id', { count: 'exact', head: true })
       .eq('actividad_id', actividadId)

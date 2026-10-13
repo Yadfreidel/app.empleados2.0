@@ -23,13 +23,26 @@ let cache: Estado | null = null
 let pendiente: Promise<Estado> | null = null
 const suscriptores = new Set<(estado: Estado) => void>()
 
+// Última configuración conocida, para respetar las reglas (p. ej. foto obligatoria) sin conexión.
+const CLAVE_LOCAL = 'fm-configuracion'
+
 async function consultar(): Promise<Estado> {
   const { data, error } = await createClient()
     .from('app_configuracion')
     .select('nombre_empresa, telefono_oficina, correo_oficina, chat_habilitado, foto_obligatoria_confirmar, max_fotos_evidencia, updated_at')
     .eq('id', 1)
     .maybeSingle()
-  if (error || !data) return { config: CONFIGURACION_POR_DEFECTO, instalada: false, cargando: false }
+  if (error || !data) {
+    const tablaInexistente = error?.code === 'PGRST205' || error?.code === '42P01' || (!error && !data)
+    if (!tablaInexistente) {
+      try {
+        const guardada = localStorage.getItem(CLAVE_LOCAL)
+        if (guardada) return { config: { ...CONFIGURACION_POR_DEFECTO, ...JSON.parse(guardada) }, instalada: true, cargando: false }
+      } catch { /* sin almacenamiento local */ }
+    }
+    return { config: CONFIGURACION_POR_DEFECTO, instalada: false, cargando: false }
+  }
+  try { localStorage.setItem(CLAVE_LOCAL, JSON.stringify(data)) } catch { /* sin almacenamiento local */ }
   return { config: { ...CONFIGURACION_POR_DEFECTO, ...data } as AppConfiguracion, instalada: true, cargando: false }
 }
 

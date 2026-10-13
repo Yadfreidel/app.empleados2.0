@@ -12,9 +12,11 @@ interface BotonesAdjuntarProps {
   disabled?: boolean
   /** 'icono' para la barra del chat; 'boton' para formularios. */
   variante?: 'icono' | 'boton'
+  /** La galería solo ofrece fotos (sin PDF). */
+  soloImagenes?: boolean
 }
 
-export function BotonesAdjuntar({ onArchivos, disabled, variante = 'icono' }: BotonesAdjuntarProps) {
+export function BotonesAdjuntar({ onArchivos, disabled, variante = 'icono', soloImagenes }: BotonesAdjuntarProps) {
   const camara = useRef<HTMLInputElement>(null)
   const galeria = useRef<HTMLInputElement>(null)
   const clases = variante === 'icono'
@@ -25,7 +27,7 @@ export function BotonesAdjuntar({ onArchivos, disabled, variante = 'icono' }: Bo
     <>
       <input ref={camara} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={e => { onArchivos(e.target.files); e.target.value = '' }} />
-      <input ref={galeria} type="file" accept={TIPOS_ADJUNTO} multiple className="hidden"
+      <input ref={galeria} type="file" accept={soloImagenes ? 'image/*' : TIPOS_ADJUNTO} multiple className="hidden"
         onChange={e => { onArchivos(e.target.files); e.target.value = '' }} />
       <button type="button" onClick={() => camara.current?.click()} disabled={disabled} className={clases} aria-label="Tomar foto">
         <Camera size={variante === 'icono' ? 20 : 17} />

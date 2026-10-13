@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { cn } from '@/lib/utils'
 import NotificacionesCampana from './NotificacionesCampana'
+import IndicadorSincronizacion from '@/components/offline/IndicadorSincronizacion'
 
 interface HeaderProps {
   isAdmin?: boolean
@@ -58,6 +59,9 @@ export default function Header({ isAdmin, onAdminLogout }: HeaderProps) {
 
           {/* Actions */}
           <div className="flex items-center gap-1 sm:gap-2">
+            {/* Estado de sincronización sin conexión */}
+            <IndicadorSincronizacion />
+
             {/* Theme Toggle Button */}
             <ThemeToggle />
 

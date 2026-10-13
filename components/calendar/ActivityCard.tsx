@@ -5,19 +5,24 @@ import {
   Clock, Building2, Tag, CheckCircle2, AlertCircle, User, MessageSquare, MessagesSquare, CalendarDays, Flag, Camera, ClipboardList, Phone,
 } from 'lucide-react'
 import { format } from 'date-fns'
-import type { Activity } from '@/types'
+import type { Activity, InformeCierre } from '@/types'
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import ChatActividad from '@/components/chat/ChatActividad'
 import { BotonesAdjuntar, MiniaturasPendientes } from '@/components/chat/SelectorFotos'
 import { cn, formatTime, truncate, getContrastText, PRIORITY_LABELS } from '@/lib/utils'
-import { confirmarActividad } from '@/lib/actividades/confirmar'
-import { createClient } from '@/lib/supabase/client'
-import { ErrorAdjunto, eliminarAdjuntos, subirAdjunto, type AdjuntoSubido } from '@/lib/chat/adjuntos'
-import { publicarAdjuntos, useResumenChat } from '@/lib/chat/useChatActividad'
+import { useResumenChat } from '@/lib/chat/useChatActividad'
 import { useArchivosPendientes } from '@/lib/chat/useArchivosPendientes'
 import { useConfiguracion } from '@/lib/configuracion/useConfiguracion'
+import { encolarConfirmacion } from '@/lib/offline/encolar'
+import { ErrorAlmacen } from '@/lib/offline/almacen'
+import { sincronizarAhora } from '@/lib/offline/sincronizacion'
+import { useInformesDisponibles } from '@/lib/informes/informes'
+import FormularioCierre, { useFormularioCierre } from '@/components/informes/FormularioCierre'
+import EstadoInformeActividad from '@/components/informes/EstadoInformeActividad'
+import { descargarInformePdf } from '@/lib/informes/descargar'
+import { createClient } from '@/lib/supabase/client'
 
 type Pestana = 'confirmar' | 'chat'
 
@@ -36,7 +41,8 @@ export default function ActivityCard({ activity: initialActivity, compact, onAct
   const [progreso, setProgreso] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
-  const [exito, setExito] = useState(false)
+  // 'enviado': llegó al servidor. 'guardado': quedó en el teléfono y se enviará solo.
+  const [exito, setExito] = useState<null | 'enviado' | 'guardado'>(null)
   const mostrarError = useCallback((mensaje: string) => setError(mensaje), [])
   const { config } = useConfiguracion()
   const maxFotos = config.max_fotos_evidencia
@@ -44,6 +50,10 @@ export default function ActivityCard({ activity: initialActivity, compact, onAct
   const resumenChat = useResumenChat(activity.id, !compact)
   const chat = { ...resumenChat, disponible: resumenChat.disponible && config.chat_habilitado }
   const faltaFoto = chat.disponible && config.foto_obligatoria_confirmar && fotos.archivos.length === 0
+  // Con la migración 009 instalada, cerrar un operativo exige el informe completo.
+  const informesDisponibles = useInformesDisponibles()
+  const conInforme = informesDisponibles === true
+  const cierre = useFormularioCierre(mostrarError)
 
   const typeColor = activity.color_override || activity.operation_type?.color || '#16a34a'
   const textOnColor = getContrastText(typeColor)
@@ -62,62 +72,62 @@ export default function ActivityCard({ activity: initialActivity, compact, onAct
     if (guardando) return
     setShowModal(false)
     if (exito) {
-      setExito(false)
+      setExito(null)
       setNota('')
       fotos.limpiar()
+      cierre.limpiar()
     }
     void chat.recargar()
   }
 
   async function handleConfirmar() {
     if (guardando || exito) return
-    if (faltaFoto) {
+    if (conInforme) {
+      const falta = cierre.validar()
+      if (falta) { setError(falta); return }
+    } else if (faltaFoto) {
       setError('Adjunta al menos una foto de evidencia para confirmar la actividad.')
       return
     }
     setGuardando(true)
     setError(null)
     setAviso(null)
-    const supabase = createClient()
-    const subidos: AdjuntoSubido[] = []
     try {
-      // 1. Subir las fotos primero: si falla, la actividad no se marca como realizada.
-      for (const [i, archivo] of fotos.archivos.entries()) {
-        setProgreso(`Subiendo foto ${i + 1} de ${fotos.archivos.length}…`)
-        subidos.push(await subirAdjunto(supabase, activity.id, archivo))
-      }
+      // 1. Guardar primero en el teléfono (fotos incluidas): nada se pierde si se corta la conexión.
+      setProgreso('Guardando en el teléfono…')
+      const datosCierre = conInforme ? cierre.datos() : null
+      const pendiente = await encolarConfirmacion(
+        activity, nota, datosCierre ? datosCierre.archivos : fotos.archivos, datosCierre?.informe,
+      )
 
-      // 2. Confirmar con el flujo existente (actividad + notificación al administrador).
-      setProgreso('Confirmando actividad…')
-      const res = await confirmarActividad({
-        activityId: activity.id,
-        nota: nota.trim() || undefined,
-      })
-
-      if (!res.ok) {
-        await eliminarAdjuntos(supabase, subidos.map(s => s.path))
-        setError(res.error || 'No se pudo confirmar la realización.')
-        return
-      }
-
-      setActivity(res.activity)
-      onActivityUpdated?.(res.activity)
-      setExito(true)
-
-      // 3. Publicar las fotos en el chat como evidencia.
-      if (subidos.length > 0) {
-        try {
-          await publicarAdjuntos(supabase, activity.id, subidos, 'Evidencia de la confirmación del servicio', true)
-        } catch {
-          setAviso('La actividad quedó confirmada, pero las fotos no se pudieron adjuntar. Envíalas desde el chat.')
+      // 2. Enviar ahora si hay conexión (fotos → cierre/confirmación → evidencia en el chat).
+      setProgreso(conInforme ? 'Enviando el cierre y las fotos…' : 'Enviando confirmación…')
+      const r = await sincronizarAhora({ soloId: pendiente.id })
+      if (r.resultado === 'sincronizada') {
+        const actualizada = { ...activity, ...(r.actividad as Partial<Activity> | null ?? { status: 'completado' as const }), hotel: activity.hotel, operation_type: activity.operation_type }
+        setActivity(actualizada)
+        onActivityUpdated?.(actualizada)
+        setExito('enviado')
+        // El informe se genera y descarga automáticamente al cerrar.
+        if (conInforme) {
+          setProgreso('Generando el informe en PDF…')
+          try {
+            const { data } = await createClient().from('informes_cierre').select('*').eq('id', pendiente.id).single()
+            if (data) await descargarInformePdf(data as InformeCierre)
+          } catch {
+            setAviso('El operativo quedó cerrado, pero el PDF no se pudo descargar ahora. Usa el botón «Descargar PDF».')
+          }
         }
+      } else if (r.resultado === 'conflicto') {
+        setError('La actividad cambió en el servidor y no se cerró. Revisa el aviso en el indicador de sincronización (arriba) para decidir qué hacer.')
+      } else {
+        setExito('guardado')
+        if (r.resultado === 'sesion') setAviso('Tu sesión expiró. Quedó guardado en el teléfono: inicia sesión para enviarlo.')
+        else if (r.resultado === 'error') setAviso('Quedó guardado en el teléfono, pero el servidor lo rechazó. Revisa el detalle en el indicador de sincronización.')
       }
     } catch (err) {
       console.error(err)
-      await eliminarAdjuntos(supabase, subidos.map(s => s.path))
-      setError(err instanceof ErrorAdjunto
-        ? `${err.message} Revisa tu conexión; la actividad no se confirmó.`
-        : 'Ocurrió un error inesperado al confirmar la actividad.')
+      setError(err instanceof ErrorAlmacen ? err.message : 'Ocurrió un error inesperado al guardar. Inténtalo de nuevo.')
     } finally {
       setGuardando(false)
       setProgreso(null)
@@ -293,13 +303,15 @@ export default function ActivityCard({ activity: initialActivity, compact, onAct
                     size="md"
                     onClick={() => startTransition(handleConfirmar)}
                     loading={guardando}
-                    disabled={guardando || faltaFoto}
+                    disabled={guardando || (!conInforme && faltaFoto) || informesDisponibles === null}
                     className="w-full bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 sm:min-w-44 sm:w-auto"
                   >
                     <CheckCircle2 size={14} />
                     {guardando
                       ? 'Guardando...'
-                      : fotos.archivos.length > 0
+                      : conInforme
+                        ? 'Cerrar y generar informe'
+                        : fotos.archivos.length > 0
                         ? `Confirmar con ${fotos.archivos.length} foto${fotos.archivos.length !== 1 ? 's' : ''}`
                         : 'Confirmar actividad'}
                   </Button>
@@ -351,16 +363,38 @@ export default function ActivityCard({ activity: initialActivity, compact, onAct
                 <div role="status" className="flex items-start gap-3 rounded-xl border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/40">
                   <CheckCircle2 size={22} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   <div>
-                    <p className="font-bold text-emerald-900 dark:text-emerald-200">¡Actividad confirmada correctamente!</p>
-                    <p className="mt-0.5 text-sm text-emerald-800 dark:text-emerald-300">Se notificó al administrador. Puedes seguir compartiendo información en el chat.</p>
+                    {exito === 'enviado' ? (
+                      <>
+                        <p className="font-bold text-emerald-900 dark:text-emerald-200">{conInforme ? '¡Operativo cerrado!' : '¡Actividad confirmada correctamente!'}</p>
+                        <p className="mt-0.5 text-sm text-emerald-800 dark:text-emerald-300">
+                          {conInforme
+                            ? 'Se notificó al administrador. Ya puedes descargar el informe en PDF aquí abajo.'
+                            : 'Se notificó al administrador. Puedes seguir compartiendo información en el chat.'}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-bold text-emerald-900 dark:text-emerald-200">Guardado en el teléfono</p>
+                        <p className="mt-0.5 text-sm text-emerald-800 dark:text-emerald-300">
+                          No hay conexión con el servidor. {conInforme ? 'El cierre y las fotos' : 'La confirmación'} se enviará{conInforme ? 'n' : ''} automáticamente al recuperar la conexión. No cierres sesión ni borres los datos del navegador.
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
 
               <DetalleActividad activity={activity} typeColor={typeColor} textOnColor={textOnColor} />
 
+              {conInforme && (esRealizada || exito === 'enviado') && (
+                <EstadoInformeActividad actividadId={activity.id} habilitado={showModal} />
+              )}
+
               {esPendiente && !exito && (
                 <div className="space-y-4">
+                  {conInforme ? (
+                    <FormularioCierre form={cierre} activity={activity} disabled={guardando} />
+                  ) : (
                   <section aria-label="Fotos de evidencia" className="space-y-2.5">
                     <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                       <Camera size={14} className="text-muted-foreground" />
@@ -385,6 +419,7 @@ export default function ActivityCard({ activity: initialActivity, compact, onAct
                       </p>
                     )}
                   </section>
+                  )}
 
                   <div>
                     <label htmlFor={`nota-confirmacion-${activity.id}`} className="mb-1.5 block text-sm font-semibold text-foreground">

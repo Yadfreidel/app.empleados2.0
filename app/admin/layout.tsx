@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutDashboard, CalendarDays, Building2, Tag,
-  LogOut, Menu, X, ChevronRight, Settings, MessagesSquare
+  LogOut, Menu, X, ChevronRight, Settings, MessagesSquare, FileText
 } from 'lucide-react'
 import Logo from '@/components/layout/Logo'
 import Button from '@/components/ui/Button'
@@ -13,11 +13,13 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { cn } from '@/lib/utils'
 import NotificacionesCampana from '@/components/layout/NotificacionesCampana'
 import { useBandejaChats } from '@/lib/chat/useBandejaChats'
+import { olvidarUsuarioLocal } from '@/lib/offline/sincronizacion'
 
 const NAV_ITEMS = [
   { href: '/admin/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
   { href: '/admin/actividades', label: 'Actividades', icon: CalendarDays },
   { href: '/admin/chats',       label: 'Chats',       icon: MessagesSquare },
+  { href: '/admin/informes',    label: 'Informes',    icon: FileText },
   { href: '/admin/hoteles',     label: 'Hoteles',     icon: Building2 },
   { href: '/admin/operaciones', label: 'Operaciones', icon: Tag },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
@@ -138,6 +140,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
+      // Cierre de sesión voluntario: este equipo deja de mostrar los pendientes de la cuenta.
+      olvidarUsuarioLocal()
       await supabase.auth.signOut()
     } catch { /* ignore */ }
     router.push('/login')

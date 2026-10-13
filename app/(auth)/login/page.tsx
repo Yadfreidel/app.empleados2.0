@@ -41,7 +41,9 @@ export default function LoginPage() {
         setError('Credenciales incorrectas. Verifica tu correo y contraseña.')
         return
       }
-      router.push('/admin/dashboard')
+      // ?volver=/ permite regresar al calendario (p. ej. para sincronizar pendientes).
+      const volver = new URLSearchParams(window.location.search).get('volver')
+      router.push(volver?.startsWith('/') && !volver.startsWith('//') ? volver : '/admin/dashboard')
       router.refresh()
     } catch {
       setError('Error de conexión. Intenta de nuevo.')

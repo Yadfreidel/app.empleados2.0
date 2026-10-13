@@ -2,6 +2,7 @@
 // app/page.tsx – Página principal: Calendario público de F&M Fumigación
 import { useState, useEffect, useCallback } from 'react'
 import { format, isSameDay } from 'date-fns'
+import { CloudOff } from 'lucide-react'
 import type { Activity, Hotel, OperationType, FilterState } from '@/types'
 import Header from '@/components/layout/Header'
 import CalendarGrid from '@/components/calendar/CalendarGrid'
@@ -10,6 +11,13 @@ import CalendarFilters from '@/components/calendar/CalendarFilters'
 import AreaCalendarSection from '@/components/calendar/AreaCalendarSection'
 import Legend from '@/components/calendar/Legend'
 import { CalendarSkeleton } from '@/components/ui/Skeleton'
+import { guardarCache, leerCache } from '@/lib/offline/almacen'
+import { EVENTO_ACTIVIDAD_SINCRONIZADA, usuarioLocal } from '@/lib/offline/sincronizacion'
+
+type DatosCalendario = { actividades: Activity[]; hoteles: Hotel[]; tipos: OperationType[] }
+
+/** Copia local separada por usuario (o «publico» si no hay sesión en el equipo). */
+const claveCache = () => `calendario:${usuarioLocal()?.id ?? 'publico'}`
 
 export default function CalendarPage() {
   const [allActivities, setAllActivities] = useState<Activity[]>([])
@@ -20,6 +28,9 @@ export default function CalendarPage() {
     hotel_id: null, operation_type_id: null, status: null, priority: null,
   })
   const [loading, setLoading] = useState(true)
+  // Si se muestra la copia guardada en el teléfono: fecha en que se guardó.
+  const [copiaLocal, setCopiaLocal] = useState<string | null>(null)
+  const [sinDatos, setSinDatos] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -27,7 +38,7 @@ export default function CalendarPage() {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
 
-      const [{ data: acts }, { data: hots }, { data: ops }] = await Promise.all([
+      const [{ data: acts, error: errActs }, { data: hots, error: errHots }, { data: ops, error: errOps }] = await Promise.all([
         supabase
           .from('activities')
           .select('*, hotel:hotels(id,name,location,code,active,notes,created_at), operation_type:operation_types(id,name,color,icon,description,active,created_at)')
@@ -38,20 +49,53 @@ export default function CalendarPage() {
         supabase.from('operation_types').select('*').eq('active', true).order('name'),
       ])
 
+      if (errActs || errHots || errOps) throw errActs ?? errHots ?? errOps
+
       setAllActivities((acts as Activity[]) ?? [])
       setHotels(hots ?? [])
       setOperationTypes(ops ?? [])
+      setCopiaLocal(null)
+      setSinDatos(false)
+      // Guardar para consultar sin conexión (si falla, el calendario sigue funcionando).
+      guardarCache(claveCache(), { actividades: acts ?? [], hoteles: hots ?? [], tipos: ops ?? [] } satisfies DatosCalendario)
+        .catch(error => console.warn('No se pudo guardar el calendario para usarlo sin conexión:', error))
     } catch (error) {
       console.error('Error cargando datos del calendario:', error)
-      setAllActivities([])
-      setHotels([])
-      setOperationTypes([])
+      // Sin conexión: usar la última copia guardada de este usuario.
+      const copia = await leerCache<DatosCalendario>(claveCache()).catch(() => null)
+      setAllActivities(copia?.datos.actividades ?? [])
+      setHotels(copia?.datos.hoteles ?? [])
+      setOperationTypes(copia?.datos.tipos ?? [])
+      setCopiaLocal(copia?.guardadoEn ?? null)
+      setSinDatos(!copia)
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Al volver la conexión, recargar datos frescos.
+  useEffect(() => {
+    const alVolver = () => { void loadData() }
+    window.addEventListener('online', alVolver)
+    return () => window.removeEventListener('online', alVolver)
+  }, [loadData])
+
+  // Una confirmación guardada sin conexión llegó al servidor: reflejarla.
+  useEffect(() => {
+    function alSincronizar(evento: Event) {
+      const { actividadId, actividad } = (evento as CustomEvent<{ actividadId: string; actividad: Partial<Activity> | null }>).detail
+      if (!actividad) return
+      setAllActivities(prev => {
+        const lista = prev.map(a => a.id === actividadId ? { ...a, ...actividad, hotel: a.hotel, operation_type: a.operation_type } : a)
+        guardarCache(claveCache(), { actividades: lista, hoteles: hotels, tipos: operationTypes } satisfies DatosCalendario).catch(() => {})
+        return lista
+      })
+    }
+    window.addEventListener(EVENTO_ACTIVIDAD_SINCRONIZADA, alSincronizar)
+    return () => window.removeEventListener(EVENTO_ACTIVIDAD_SINCRONIZADA, alSincronizar)
+  }, [hotels, operationTypes])
 
   // Filtrar actividades según los filtros activos
   const filteredActivities = allActivities.filter(act => {
@@ -85,6 +129,22 @@ export default function CalendarPage() {
             Trabajos programados de F&amp;M Fumigación en todos los hoteles
           </p>
         </div>
+
+        {copiaLocal && (
+          <p role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-slate-300 bg-slate-100 p-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+            <CloudOff size={18} className="mt-0.5 shrink-0" />
+            <span>
+              <strong>Sin conexión.</strong> Mostrando el calendario guardado en este teléfono el {format(new Date(copiaLocal), 'dd/MM/yyyy')} a las {format(new Date(copiaLocal), 'HH:mm')}.
+              Puedes confirmar actividades: se enviarán al recuperar la conexión.
+            </span>
+          </p>
+        )}
+        {sinDatos && (
+          <p role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            <CloudOff size={18} className="mt-0.5 shrink-0" />
+            <span>Sin conexión y sin un calendario guardado en este teléfono. Ábrelo con internet al menos una vez para poder consultarlo sin conexión.</span>
+          </p>
+        )}
 
         {/* Filtros */}
         <div className="mb-4">
