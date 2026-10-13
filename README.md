@@ -81,6 +81,7 @@ app.empleados/
    - [`supabase/migrations/010_informes_descarga_local.sql`](supabase/migrations/010_informes_descarga_local.sql) (PDF descargable en el equipo y revisión del supervisor, sin correo)
    - [`supabase/migrations/011_cierre_simplificado.sql`](supabase/migrations/011_cierre_simplificado.sql) (cierre con descripción + 2 fotos)
    - [`supabase/migrations/012_cierre_por_voz.sql`](supabase/migrations/012_cierre_por_voz.sql) (dictar reporte: dictados, productos/recomendaciones/pendientes)
+   - [`supabase/migrations/013_logo_hoteles.sql`](supabase/migrations/013_logo_hoteles.sql) (logotipo de cada hotel)
    - Opcional: Edge Function `informes-cierre` para el análisis con IA: ver [`supabase/functions/README.md`](supabase/functions/README.md)
    - Despliega la Edge Function `admin-usuarios` para crear y editar usuarios desde el panel: ver [`supabase/functions/README.md`](supabase/functions/README.md)
 3. Copia el archivo `.env.local.example` a `.env.local`:

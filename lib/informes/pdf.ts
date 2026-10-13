@@ -44,6 +44,8 @@ export interface DatosPdf {
   empresa: string
   zonaHoraria: string
   logoPng: Uint8Array
+  /** Logo del hotel (PNG o JPG); si falta o no se puede leer, no se dibuja. */
+  logoHotel?: Uint8Array | null
 }
 
 const VERDE = rgb(0.09, 0.5, 0.24)
@@ -219,10 +221,23 @@ export async function generarPdf(d: DatosPdf): Promise<Uint8Array> {
   p.drawImage(logo, { x: MARGEN, y: l.y - lado, width: lado, height: lado })
   p.drawText(limpiar(d.empresa), { x: MARGEN + lado + 14, y: l.y - 24, size: 17, font: negrita, color: TEXTO })
   p.drawText('Informe de cierre de servicio', { x: MARGEN + lado + 14, y: l.y - 42, size: 12, font: normal, color: VERDE })
-  p.drawText(limpiar(`Control de plagas - ${d.hotel}`).slice(0, 70), { x: MARGEN + lado + 14, y: l.y - 57, size: 9, font: normal, color: GRIS })
+  p.drawText(limpiar(`Control de plagas - ${d.hotel}`).slice(0, d.logoHotel ? 42 : 70), { x: MARGEN + lado + 14, y: l.y - 57, size: 9, font: normal, color: GRIS })
 
   const cajaAncho = 150
   const cajaX = ANCHO - MARGEN - cajaAncho
+  if (d.logoHotel) {
+    try {
+      const tipo = tipoImagen(d.logoHotel)
+      const img = tipo === 'jpg' ? await doc.embedJpg(d.logoHotel) : tipo === 'png' ? await doc.embedPng(d.logoHotel) : null
+      if (img) {
+        // Se ajusta dentro de un cuadro de 52 pt sin deformarlo.
+        const escala = Math.min(52 / img.width, 52 / img.height)
+        const w = img.width * escala
+        const h = img.height * escala
+        p.drawImage(img, { x: cajaX - 12 - 52 + (52 - w) / 2, y: l.y - 58 + (52 - h) / 2, width: w, height: h })
+      }
+    } catch { /* logo del hotel dañado: se omite */ }
+  }
   p.drawRectangle({ x: cajaX, y: l.y - 58, width: cajaAncho, height: 52, color: FONDO, borderColor: LINEA, borderWidth: 0.8 })
   p.drawText('INFORME N.º', { x: cajaX + 10, y: l.y - 20, size: 7.5, font: negrita, color: GRIS })
   p.drawText(limpiar(d.numero), { x: cajaX + 10, y: l.y - 35, size: 12.5, font: negrita, color: AZUL })

@@ -61,6 +61,23 @@ function contenido(i: InformeCierre): AnalisisInforme {
   }
 }
 
+/** El PDF solo admite PNG y JPG: un logo WEBP se convierte a PNG con el navegador. */
+async function logoParaPdf(bytes: Uint8Array): Promise<Uint8Array | null> {
+  const esWebp = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && bytes[8] === 0x57 && bytes[9] === 0x45
+  if (!esWebp) return bytes
+  try {
+    const imagen = await createImageBitmap(new Blob([bytes as BlobPart], { type: 'image/webp' }))
+    const canvas = document.createElement('canvas')
+    canvas.width = imagen.width
+    canvas.height = imagen.height
+    canvas.getContext('2d')?.drawImage(imagen, 0, 0)
+    const png = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'))
+    return png ? new Uint8Array(await png.arrayBuffer()) : null
+  } catch {
+    return null
+  }
+}
+
 /** Descarga el PDF del informe en este equipo. */
 export async function descargarInformePdf(i: InformeCierre) {
   const { generarPdf } = await import('./pdf')
@@ -74,7 +91,13 @@ export async function descargarInformePdf(i: InformeCierre) {
   }
 
   // Fotos del bucket privado (URLs firmadas con los permisos del usuario).
-  const urls = await obtenerUrlsFirmadas(createClient(), i.fotos.map(f => f.path))
+  const supabase = createClient()
+  // Logo del hotel (migración 013). Si no hay o no carga, el PDF sale sin él.
+  const { data: hotel } = await supabase.from('hotels').select('logo_url').eq('id', i.hotel_id).maybeSingle()
+  const logoOriginal = hotel?.logo_url ? await bytesDe(hotel.logo_url as string).catch(() => null) : null
+  const logoHotel = logoOriginal ? await logoParaPdf(logoOriginal) : null
+
+  const urls = await obtenerUrlsFirmadas(supabase, i.fotos.map(f => f.path))
   if (i.fotos.length > 0 && Object.keys(urls).length === 0) {
     throw new Error('No se pudieron obtener las fotos. Revisa tu conexión o tus permisos.')
   }
@@ -103,6 +126,7 @@ export async function descargarInformePdf(i: InformeCierre) {
     empresa: 'F&M Fumigación',
     zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Santo_Domingo',
     logoPng: logo,
+    logoHotel,
   })
 
   const url = URL.createObjectURL(new Blob([pdf as BlobPart], { type: 'application/pdf' }))

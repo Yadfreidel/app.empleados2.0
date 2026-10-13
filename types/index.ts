@@ -19,6 +19,8 @@ export interface Hotel {
   code: string | null
   active: boolean
   notes: string | null
+  /** URL pública del logotipo (migración 013). */
+  logo_url?: string | null
   created_at: string
 }
 

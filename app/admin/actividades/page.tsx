@@ -10,6 +10,7 @@ import Modal, { ConfirmModal } from '@/components/ui/Modal'
 import ChatActividad from '@/components/chat/ChatActividad'
 import { Skeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
+import LogoHotel from '@/components/hoteles/LogoHotel'
 import { StatusBadge, PriorityBadge } from '@/components/ui/Badge'
 import { activitySchema } from '@/lib/validations'
 import { formatDate, formatTime, STATUS_LABELS, PRIORITY_LABELS, formatSupabaseError } from '@/lib/utils'
@@ -153,7 +154,7 @@ function ActividadesContent() {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
       const [{ data: acts }, { data: hots }, { data: ops }] = await Promise.all([
-        supabase.from('activities').select('*, hotel:hotels(id,name), operation_type:operation_types(id,name,color)').order('date', { ascending: false }).order('created_at', { ascending: false }),
+        supabase.from('activities').select('*, hotel:hotels(*), operation_type:operation_types(id,name,color)').order('date', { ascending: false }).order('created_at', { ascending: false }),
         supabase.from('hotels').select('*').eq('active', true).order('name'),
         supabase.from('operation_types').select('*').eq('active', true).order('name'),
       ])
@@ -431,8 +432,11 @@ function ActividadesContent() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-foreground/90 font-medium truncate max-w-[140px]">
-                          {hotel?.name || '—'}
+                        <td className="px-5 py-4 text-foreground/90 font-medium max-w-[180px]">
+                          <span className="flex items-center gap-2">
+                            {hotel && <LogoHotel url={hotel.logo_url} nombre={hotel.name} tamano={24} />}
+                            <span className="truncate">{hotel?.name || '—'}</span>
+                          </span>
                         </td>
                         <td className="px-5 py-4">
                           {opType ? (

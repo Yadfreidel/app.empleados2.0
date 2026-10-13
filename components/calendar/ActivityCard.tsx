@@ -21,6 +21,7 @@ import { sincronizarAhora } from '@/lib/offline/sincronizacion'
 import { useInformesDisponibles } from '@/lib/informes/informes'
 import FormularioCierre, { useFormularioCierre } from '@/components/informes/FormularioCierre'
 import EstadoInformeActividad from '@/components/informes/EstadoInformeActividad'
+import LogoHotel from '@/components/hoteles/LogoHotel'
 import { descargarInformePdf } from '@/lib/informes/descargar'
 import { createClient } from '@/lib/supabase/client'
 
@@ -167,8 +168,10 @@ export default function ActivityCard({ activity: initialActivity, compact, onAct
           {/* Meta */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mb-2">
             {/* Hotel */}
-            <span className="flex items-center gap-1">
-              <Building2 size={13} className="text-muted-foreground/80" />
+            <span className="flex items-center gap-1.5">
+              {activity.hotel?.logo_url
+                ? <LogoHotel url={activity.hotel.logo_url} nombre={activity.hotel.name} tamano={22} className="rounded-md" />
+                : <Building2 size={13} className="text-muted-foreground/80" />}
               <span className="font-medium text-foreground/80">{activity.hotel?.name || '—'}</span>
             </span>
             {/* Time */}
@@ -503,12 +506,15 @@ function DetalleActividad({ activity, typeColor, textOnColor }: { activity: Acti
 
   return (
     <section aria-label="Resumen del servicio" className="rounded-2xl border border-border bg-muted/40 p-4 sm:p-5">
-      <span
-        className="mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-        style={{ background: typeColor, color: textOnColor }}
-      >
-        <Tag size={11} /> {activity.operation_type?.name || 'Operación'}
-      </span>
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className="mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+          style={{ background: typeColor, color: textOnColor }}
+        >
+          <Tag size={11} /> {activity.operation_type?.name || 'Operación'}
+        </span>
+        {activity.hotel?.logo_url && <LogoHotel url={activity.hotel.logo_url} nombre={activity.hotel.name} tamano={56} />}
+      </div>
       <p className="mb-4 break-words text-xl font-bold text-foreground">{activity.title}</p>
       <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
         {filas.map(f => (
@@ -540,6 +546,7 @@ function DetalleActividad({ activity, typeColor, textOnColor }: { activity: Acti
 function ResumenCompacto({ activity, typeColor }: { activity: Activity; typeColor: string }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 px-3 py-2" style={{ borderLeftWidth: 4, borderLeftColor: typeColor }}>
+      {activity.hotel?.logo_url && <LogoHotel url={activity.hotel.logo_url} nombre={activity.hotel.name} tamano={32} />}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold text-foreground">{activity.title}</p>
         <p className="truncate text-xs text-muted-foreground">

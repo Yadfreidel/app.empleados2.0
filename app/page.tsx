@@ -41,7 +41,7 @@ export default function CalendarPage() {
       const [{ data: acts, error: errActs }, { data: hots, error: errHots }, { data: ops, error: errOps }] = await Promise.all([
         supabase
           .from('activities')
-          .select('*, hotel:hotels(id,name,location,code,active,notes,created_at), operation_type:operation_types(id,name,color,icon,description,active,created_at)')
+          .select('*, hotel:hotels(*), operation_type:operation_types(id,name,color,icon,description,active,created_at)')
           .eq('published', true)
           .order('date')
           .order('start_time', { ascending: true, nullsFirst: false }),

@@ -1,7 +1,7 @@
 'use client'
 // app/(admin)/hoteles/page.tsx
 import { useState, useEffect, useCallback } from 'react'
-import { Building2, CalendarDays, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search } from 'lucide-react'
+import { Building2, CalendarDays, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search, ImagePlus, X } from 'lucide-react'
 import Link from 'next/link'
 import type { Hotel, HotelFormData } from '@/types'
 import Button from '@/components/ui/Button'
@@ -10,6 +10,8 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
 import { hotelSchema } from '@/lib/validations'
 import { formatSupabaseError } from '@/lib/utils'
+import LogoHotel from '@/components/hoteles/LogoHotel'
+import { borrarLogoHotel, subirLogoHotel, validarLogo } from '@/lib/hoteles/logo'
 
 // ── Form ──────────────────────────────────────────────────────────────────────
 const EMPTY_FORM: HotelFormData = {
@@ -68,6 +70,57 @@ function HotelForm({
   )
 }
 
+// ── Logo ──────────────────────────────────────────────────────────────────────
+function SelectorLogo({ nombre, actual, archivo, quitar, onArchivo, onQuitar, onError, disabled }: {
+  nombre: string
+  actual: string | null
+  archivo: File | null
+  quitar: boolean
+  onArchivo: (f: File | null) => void
+  onQuitar: () => void
+  onError: (m: string) => void
+  disabled?: boolean
+}) {
+  const [vista, setVista] = useState<string | null>(null)
+  useEffect(() => {
+    if (!archivo) { setVista(null); return }
+    const url = URL.createObjectURL(archivo)
+    setVista(url)
+    return () => URL.revokeObjectURL(url)
+  }, [archivo])
+  const mostrado = vista ?? (quitar ? null : actual)
+
+  return (
+    <div className="mb-4 flex items-center gap-4">
+      <LogoHotel key={mostrado ?? "sin-logo"} url={mostrado} nombre={nombre || "hotel"} tamano={72} />
+      <div className="flex flex-col gap-2">
+        <span className="fm-label !mb-0">Logotipo</span>
+        <div className="flex flex-wrap gap-2">
+          <label className={`fm-btn fm-btn-secondary fm-btn-sm min-h-[40px] cursor-pointer px-3 ${disabled ? 'pointer-events-none opacity-50' : ''}`}>
+            <ImagePlus size={14} /> {mostrado ? 'Cambiar logo' : 'Subir logo'}
+            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={disabled}
+              onChange={e => {
+                const f = e.target.files?.[0] ?? null
+                e.target.value = ''
+                if (!f) return
+                const problema = validarLogo(f)
+                if (problema) { onError(problema); return }
+                onArchivo(f)
+              }} />
+          </label>
+          {mostrado && (
+            <button type="button" disabled={disabled} onClick={() => { onArchivo(null); onQuitar() }}
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950">
+              <X size={14} /> Quitar
+            </button>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground">PNG, JPG o WEBP, máx. 2 MB. Mejor cuadrado y con fondo transparente.</span>
+      </div>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function HotelesPage() {
   const [hotels, setHotels]       = useState<Hotel[]>([])
@@ -80,6 +133,8 @@ export default function HotelesPage() {
   const [saving, setSaving]       = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Hotel | null>(null)
   const [deleting, setDeleting]   = useState(false)
+  const [logoArchivo, setLogoArchivo] = useState<File | null>(null)
+  const [quitarLogo, setQuitarLogo]   = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -105,6 +160,8 @@ export default function HotelesPage() {
     setEditing(null)
     setForm(EMPTY_FORM)
     setFormErr(null)
+    setLogoArchivo(null)
+    setQuitarLogo(false)
     setModalOpen(true)
   }
 
@@ -112,6 +169,8 @@ export default function HotelesPage() {
     setEditing(h)
     setForm({ name: h.name, location: h.location ?? '', code: h.code ?? '', active: h.active, notes: h.notes ?? '' })
     setFormErr(null)
+    setLogoArchivo(null)
+    setQuitarLogo(false)
     setModalOpen(true)
   }
 
@@ -133,12 +192,27 @@ export default function HotelesPage() {
         active:   result.data.active,
         notes:    result.data.notes || null,
       }
+      let hotelId = editing?.id
       if (editing) {
         const { error } = await supabase.from('hotels').update(payload).eq('id', editing.id)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('hotels').insert(payload)
+        const { data, error } = await supabase.from('hotels').insert(payload).select('id').single()
         if (error) throw error
+        hotelId = data.id
+      }
+      // Logo: primero se sube el nuevo y se guarda su URL; después se borra el anterior.
+      const logoAnterior = editing?.logo_url ?? null
+      if (hotelId && (logoArchivo || (quitarLogo && logoAnterior))) {
+        const nuevaUrl = logoArchivo ? await subirLogoHotel(supabase, hotelId, logoArchivo) : null
+        const { error } = await supabase.from('hotels').update({ logo_url: nuevaUrl }).eq('id', hotelId)
+        if (error) {
+          if (nuevaUrl) await borrarLogoHotel(supabase, nuevaUrl)
+          throw error.code === 'PGRST204' || /logo_url/.test(error.message)
+            ? new Error('Falta ejecutar la migración 013_logo_hoteles.sql en Supabase.')
+            : error
+        }
+        if (logoAnterior) await borrarLogoHotel(supabase, logoAnterior)
       }
       setModalOpen(false)
       await load()
@@ -219,11 +293,7 @@ export default function HotelesPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-fm-green-100 text-fm-green-800 dark:bg-fm-green-950 dark:text-fm-green-300"
-                    >
-                      <Building2 size={18} />
-                    </div>
+                    <LogoHotel url={h.logo_url} nombre={h.name} tamano={40} />
                     <div>
                       <h3 className="text-sm font-bold text-foreground leading-snug">{h.name}</h3>
                       {h.code && (
@@ -296,9 +366,7 @@ export default function HotelesPage() {
                     <tr key={h.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-fm-green-100 text-fm-green-800 dark:bg-fm-green-950 dark:text-fm-green-300">
-                            <Building2 size={16} />
-                          </div>
+                          <LogoHotel url={h.logo_url} nombre={h.name} tamano={36} />
                           <span className="font-bold text-foreground truncate">{h.name}</span>
                         </div>
                       </td>
@@ -381,6 +449,9 @@ export default function HotelesPage() {
           </>
         }
       >
+        <SelectorLogo nombre={form.name} actual={editing?.logo_url ?? null} archivo={logoArchivo} quitar={quitarLogo}
+          onArchivo={f => { setLogoArchivo(f); if (f) setQuitarLogo(false) }} onQuitar={() => setQuitarLogo(true)}
+          onError={setFormErr} disabled={saving} />
         <HotelForm value={form} onChange={setForm} error={formErr} />
       </Modal>
 

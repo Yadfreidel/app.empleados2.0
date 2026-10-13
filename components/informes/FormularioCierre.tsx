@@ -14,6 +14,7 @@ import { BotonesAdjuntar, MiniaturasPendientes } from '@/components/chat/Selecto
 import { MAX_FOTOS_INFORME, OPCIONES_RESULTADO } from '@/lib/informes/informes'
 import type { DatosInformeCierre } from '@/lib/offline/encolar'
 import DictadoReporte, { type CamposDictado } from './DictadoReporte'
+import LogoHotel from '@/components/hoteles/LogoHotel'
 
 const MIN_FOTOS = 2
 const MIN_TEXTO = 3
@@ -113,7 +114,9 @@ export default function FormularioCierre({ form, activity, disabled }: { form: F
       </div>
 
       <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 p-3 text-sm">
-        <Building2 size={16} className="shrink-0 text-muted-foreground" />
+        {activity.hotel?.logo_url
+          ? <LogoHotel url={activity.hotel.logo_url} nombre={activity.hotel.name} tamano={28} />
+          : <Building2 size={16} className="shrink-0 text-muted-foreground" />}
         <span className="text-muted-foreground">Hotel:</span>
         <span className="font-semibold text-foreground">{activity.hotel?.name || '—'}</span>
       </div>
